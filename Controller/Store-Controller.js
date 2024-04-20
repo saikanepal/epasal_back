@@ -1,10 +1,11 @@
 const Store = require('../Model/Store-model'); // Import the Store model
 const Product = require('../Model/Product-model'); // Import the Product model
-
+const User = require('../Model/User-model'); // Import the User model
 const createStore = async (req, res) => {
     console.log(req.body);
+    console.log(req.userData.userID);
     console.log("inside store");
-    const { name, logo, categories, subCategories, products, color, secondaryBanner, previewMode, selectedSubCategory, cart, socialMediaLinks, footerDescription } = req.body.store;
+    const { name, logo, categories, subCategories, products, location, phoneNumber, email, color, secondaryBanner, previewMode, selectedSubCategory, cart, socialMediaLinks, footerDescription } = req.body.store;
 
     try {
         // Create products if products data is provided
@@ -37,17 +38,28 @@ const createStore = async (req, res) => {
             categories,
             subCategories,
             products: savedProducts, // Use savedProducts array instead of just products
+            location,
+            phoneNumber,
+            emailAddress:email,
             color,
             secondaryBanner,
             previewMode,
             selectedSubCategory,
             cart,
             socialMediaLinks,
-            footerDescription
+            footerDescription,
+            admin: req.userData.userID // Set admin as req.userData.userID
         });
 
         // Save the store to the database
         await newStore.save();
+
+        // Update user document to include the new store ID
+        const user = await User.findById(req.userData.userID);
+        if (user) {
+            user.stores.push(newStore._id); // Add new store ID to user's stores array
+            await user.save();
+        }
 
         res.status(201).json({ message: 'Store created successfully', store: newStore });
     } catch (error) {

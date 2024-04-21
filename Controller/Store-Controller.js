@@ -57,6 +57,7 @@ const createStore = async (req, res) => {
 };
 
 const getStore = async (req, res) => {
+    console.log("inside getStore", req.params.storeId)
     try {
         // Retrieve store with a maximum limit of 30 products
         const store = await Store.findById(req.params.storeId).populate({

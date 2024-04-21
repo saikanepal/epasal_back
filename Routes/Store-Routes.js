@@ -13,4 +13,4 @@ router.post('/create', storeController.createStore);
 
 router.get('/get/:storeId', storeController.getStore);
 // Export the router
-module.exports = router;
+module.exports = router; 

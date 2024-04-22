@@ -39,7 +39,7 @@ const createStore = async (req, res) => {
             products: savedProducts, // Use savedProducts array instead of just products
             color,
             secondaryBanner,
-            previewMode,
+            previewMode:true,
             selectedSubCategory,
             cart,
             socialMediaLinks,

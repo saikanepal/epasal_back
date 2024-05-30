@@ -1,10 +1,11 @@
 const Store = require('../Model/Store-model'); // Import the Store model
 const Product = require('../Model/Product-model'); // Import the Product model
-
+const User = require('../Model/User-model'); // Import the User model
 const createStore = async (req, res) => {
     console.log(req.body);
+    console.log(req.userData.userID);
     console.log("inside store");
-    const { name, logo, categories, subCategories, products, color, secondaryBanner, previewMode, selectedSubCategory, cart, socialMediaLinks, footerDescription } = req.body.store;
+    const { name, logo, categories, subCategories, products, location, phoneNumber, email, color, secondaryBanner, previewMode, selectedSubCategory, cart, socialMediaLinks, footerDescription } = req.body.store;
 
     try {
         // Create products if products data is provided
@@ -37,17 +38,28 @@ const createStore = async (req, res) => {
             categories,
             subCategories,
             products: savedProducts, // Use savedProducts array instead of just products
+            location,
+            phoneNumber,
+            emailAddress: email,
             color,
             secondaryBanner,
-            previewMode:true,
+            previewMode: true,
             selectedSubCategory,
             cart,
             socialMediaLinks,
-            footerDescription
+            footerDescription,
+            admin: req.userData.userID // Set admin as req.userData.userID
         });
 
         // Save the store to the database
         await newStore.save();
+
+        // Update user document to include the new store ID
+        const user = await User.findById(req.userData.userID);
+        if (user) {
+            user.stores.push(newStore._id); // Add new store ID to user's stores array
+            await user.save();
+        }
 
         res.status(201).json({ message: 'Store created successfully', store: newStore });
     } catch (error) {
@@ -68,7 +80,7 @@ const getStore = async (req, res) => {
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
-
+        console.log(store)
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
         console.error('Error retrieving store:', error);
@@ -76,7 +88,25 @@ const getStore = async (req, res) => {
     }
 };
 
+const getActiveTheme = async (req, res) => {
+    try {
+        // Extract store ID from request parameters
+        const storeID = req.params.storeID;
+        // Query the database for the activeTheme of the specified store
+        const store = await Store.findById(storeID).select('activeTheme').lean();
+        // Check if the store was found
+        if (!store) {
+            return res.status(404).json({ message: 'Store not found' });
+        }
+        // Return the activeTheme
+        return res.status(200).json({ activeTheme: store.activeTheme });
+    } catch (error) {
+        // Handle any errors that occurred during the database query
+        return res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+};
 module.exports = {
     createStore,
-    getStore
+    getStore,
+    getActiveTheme
 };

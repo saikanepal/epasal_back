@@ -1,6 +1,6 @@
-// Require necessary modules
 const mongoose = require('mongoose');
-// Define the user schema
+const Store = require('./Store-model');
+
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
@@ -24,9 +24,14 @@ const userSchema = new mongoose.Schema({
     isVerified: {
         type: Boolean,
         default: false
+    },
+    stores: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Store' }], // Array of references to Store model for stores
+    activeTheme: {
+        type: String,
+        default: 1
     }
 });
 
-// Create and export the User model
 const User = mongoose.model('User', userSchema);
+
 module.exports = User;

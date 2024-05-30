@@ -7,10 +7,12 @@ const storeController = require('../Controller/Store-Controller');
 
 
 //authentication middleware
-router.use(checkAuth);
+router.use(checkAuth);  
 
 router.post('/create', storeController.createStore);
 
 router.get('/get/:storeId', storeController.getStore);
+router.get('/getactiveTheme/:storeID', storeController.getActiveTheme);
+
 // Export the router
 module.exports = router; 

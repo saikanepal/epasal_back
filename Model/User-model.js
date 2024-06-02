@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema({
     activeTheme: {
         type: String,
         default: 1
-    }
+    },
 });
 
 const User = mongoose.model('User', userSchema);

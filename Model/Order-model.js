@@ -5,21 +5,12 @@ const orderSchema = new mongoose.Schema({
     // Customer details
     fullName: { type: String, required: true },
     phoneNumber: { type: String, required: true },
-    comments: { type: String },
-
+    // status : processed , delivered , cancelled , being delivered ?
+    status: { type: String, required: true, default: 'processing' },
     // product details
-    productID: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+    //to do 
+    products: [{ type: Object }],
     quantity: { type: Number },
-    selectedVariants: [{
-        name: {
-            type: String,
-            required: true
-        },
-        value: {
-            type: String,
-            required: true
-        }
-    }],
     //Amount details
     totalPrice: {
         type: Number,
@@ -33,20 +24,28 @@ const orderSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    taxAmount :{
-        type:Number,
-        default:0
+    taxAmount: {
+        type: Number,
+        default: 0
     },
-    discountCode: {
+
+    //promo stuff
+    promoCode: {
         type: String,
     },
-    discountAmmount: {
+    promoDiscount: {
         type: Number,
     },
 
-    //location details
+    //location details ;to do
     District: { type: String },
-    location: { type: string },
+    location: {
+        latitude: { type: String },
+        longitude: { type: String }
+    },
+    address: {
+        type: String
+    },
     landmark: { type: string },
 
     //payment details

@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const User = require('./User-model');
-
+const Product = require('./Product-model');
 const storeSchema = new mongoose.Schema({
     name: { type: String, required: true },
     logo: { type: String, required: true },

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema({
+
     name: {
         type: String,
         required: true
@@ -13,6 +14,15 @@ const productSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    // need to deal with price oncce variant is introduced 
+    price: {
+        type: Number
+    },
+
+    //discount field 
+    discountCap: {
+        type: String, // higher or lower discount 
+    },
     variant: [{
         name: {
             type: String,
@@ -21,7 +31,7 @@ const productSchema = new mongoose.Schema({
         options: [{
             value: {
                 type: String,
-                required: true
+                required: true,
             },
             price: {
                 type: Number,
@@ -30,24 +40,33 @@ const productSchema = new mongoose.Schema({
             image: {
                 type: String,
                 required: true
+            },
+            discount: {
+                type: Number,
+                default: 0
             }
         }]
     }],
-    created_at: {
-        type: Date,
-        default: Date.now
+    //analytics
+    soldQuantity: {
+        type: Number
     },
-    updated_at: {
-        type: Date,
-        default: Date.now
+    revenueGenerated: {
+        type: Number
+    },
+    inventory: {
+        type: Number
+    },// total amount of stocks of quantity 
+    review: {
+        type: Number
+    },
+    discount: {
+        type: Number,
+        default: 0
     }
-});
+}, { timestamps: true });
 
-// Add pre-save hook to update the updated_at field
-productSchema.pre('save', function (next) {
-    this.updated_at = Date.now();
-    next();
-});
+
 
 const Product = mongoose.model('Product', productSchema);
 

@@ -34,7 +34,7 @@ const esewaTransactionSchema = new mongoose.Schema({
         required: true,
     },
     //transaction ID = orderID = refrence to Order Model
-    orderID : {type: mongoose.Schema.Types.ObjectId, ref: 'Order'}
+    orderID: { type: mongoose.Schema.Types.ObjectId, ref: 'Order' }
 }, {
     timestamps: true
 });

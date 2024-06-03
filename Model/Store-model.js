@@ -1,9 +1,24 @@
 const mongoose = require('mongoose');
 const User = require('./User-model');
 const Product = require('./Product-model');
+const cloudinary = require("cloudinary").v2;
+cloudinary.config({
+    cloud_name: 'dcrcc9b4h',
+    api_key: '638351652727691',
+    api_secret: 'pjMWR4xBh2svNScZ_vFg5pyidH0',
+});
+
+
 const storeSchema = new mongoose.Schema({
     name: { type: String, required: true },
-    logo: { type: String, required: true },
+    logo: {
+        logoUrl: {
+            type: String
+        },
+        logoID: {
+            type: String
+        }
+    },
     phoneNumber: { type: String, required: true }, // Phone number of the store
     emailAddress: { type: String, required: true }, // Email address of the store
     categories: [{ name: { type: String, required: true } }],
@@ -13,9 +28,24 @@ const storeSchema = new mongoose.Schema({
 
     //images 
     logo: { type: String, required: true },
-    HeroSection: { type: String },
-    secondaryBanner: { type: String },
-    thirdBanner: { type: String },
+    HeroSection: {
+        HeroSectionUrl: {
+            type: String
+        },
+        HeroSectionID: {
+            type: String
+        }
+    },
+    secondaryBanner: {
+        secondaryBannerUrl: { type: String },
+        secondaryBannerID: { type: String },
+    },
+
+
+    thirdBanner: {
+        thirdBannerUrl: { type: String },
+        thirdBannerID: { type: String },
+    },
 
 
     //location 

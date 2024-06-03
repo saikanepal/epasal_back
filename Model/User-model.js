@@ -25,11 +25,12 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    stores: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Store' }], // Array of references to Store model for stores
-    activeTheme: {
+    stores: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Store' }],
+    role: {
         type: String,
-        default: 1
-    },
+        enum: ['Owner', 'Admin', 'Staff', 'Delivery'],
+        default: 'Staff'
+    }
 });
 
 const User = mongoose.model('User', userSchema);

@@ -132,6 +132,61 @@ const updateStore = async (req, res) => {
     }
 }
 
+const deleteStore = async (req, res) => {
+    try {
+        const storeId = req.params.storeId;
+
+        // Find the store by ID
+        const store = await Store.findById(storeId);
+
+        if (!store) {
+            return res.status(404).json({ message: 'Store not found' });
+        }
+
+        // Delete all images associated with the store from Cloudinary
+        await Promise.all([
+            cloudinary.uploader.destroy(store.logo.logoID),
+            cloudinary.uploader.destroy(store.HeroSection.HeroSectionID),
+            cloudinary.uploader.destroy(store.secondaryBanner.secondaryBannerID),
+            cloudinary.uploader.destroy(store.thirdBanner.thirdBannerID)
+            // Add more lines for other images if needed
+        ]);
+
+        for (const productId of store.products) {
+            // Find the product by ID
+            const product = await Product.findById(productId);
+
+            if (!product) {
+                console.warn(`Product with ID ${productId} not found`);
+                continue; // Skip to the next product if not found
+            }
+
+            if(product.image && product.image.imageID){
+                await cloudinary.uploader.destroy(product.image.imageID);
+            }
+            // Loop through each variant of the product
+            for (const variant of product.variant) {
+                // Check if the variant has an image
+                if (variant.image && variant.image.imageID) {
+                    // Delete the image from Cloudinary
+                    await cloudinary.uploader.destroy(variant.image.imageID);
+                }
+            }
+        }
+        // TODO : needs to have a loop through product which deletes images from cloudinary using cloudinary ID
+
+
+
+        // Delete the store
+        await store.remove();
+
+        res.status(200).json({ message: 'Store deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting store:', error);
+        res.status(500).json({ message: 'Internal server error' });
+    }
+};
+
 
 module.exports = {
     createStore,

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-
+const Review = require('./Review-Model');
 const productSchema = new mongoose.Schema({
 
     name: {
@@ -18,7 +18,10 @@ const productSchema = new mongoose.Schema({
     price: {
         type: Number
     },
-
+    image : {
+        imageUrl:{type:String},
+        imageID:{type:String}
+    },
     //discount field 
     discountCap: {
         type: String, // higher or lower discount 
@@ -57,9 +60,10 @@ const productSchema = new mongoose.Schema({
     inventory: {
         type: Number
     },// total amount of stocks of quantity 
-    review: {
-        type: Number
-    },
+    review: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Review'
+    }],
     discount: {
         type: Number,
         default: 0

@@ -105,8 +105,37 @@ const getActiveTheme = async (req, res) => {
         return res.status(500).json({ message: 'Internal server error', error: error.message });
     }
 };
+
+const updateStore = async (req, res) => {
+    const { id } = req.params;
+    const updateData = req.body;
+    console.log(req.body);
+
+    // Remove the products field from the updateData if it exists // products are being handled respectively 
+    delete updateData.products;
+
+    try {
+        // Find the store by ID and update it with the new data
+        const updatedStore = await Store.findByIdAndUpdate(id, updateData, {
+            new: true, // Return the updated document
+            runValidators: true, // Run schema validators
+        });
+
+        if (!updatedStore) {
+            return res.status(404).send({ error: 'Store not found' });
+        }
+
+        res.send(updatedStore);
+    } catch (error) {
+        console.error('Error updating store:', error);
+        res.status(500).send({ error: 'Internal Server Error' });
+    }
+}
+
+
 module.exports = {
     createStore,
     getStore,
-    getActiveTheme
+    getActiveTheme,
+    updateStore
 };

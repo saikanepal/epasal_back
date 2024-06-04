@@ -6,6 +6,7 @@ const cors = require('cors');
 const morgan = require('morgan'); // Import Morgan
 const userRoute = require('./Routes/User-Routes');
 const storeRoute = require('./Routes/Store-Routes');
+const productRoute=require('./Routes/Product-Routes')
 const app = express();
 const PORT = process.env.PORT || 8000;
 
@@ -31,3 +32,4 @@ mongoose
 // Routes here
 app.use('/api/users', userRoute);
 app.use('/api/store', storeRoute);
+app.use('/api/product',productRoute)

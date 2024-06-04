@@ -79,6 +79,13 @@ const productSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+productSchema.pre('remove', async function (next) {
+    try {
+      await Review.deleteMany({ _id: { $in: this.review } });
+    } catch (err) {
+      next(err); // Propagate any errors
+    }
+  });
 
 
 const Product = mongoose.model('Product', productSchema);

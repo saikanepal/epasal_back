@@ -1,8 +1,10 @@
 // Require necessary modules
 const express = require('express');
 const router = express.Router();
-const checkAuth = require('../MiddleWare/checkAuth');
 const storeController = require('../Controller/Store-Controller');
+//middlewares
+const checkAuth = require('../MiddleWare/checkAuth');
+const checkRole = require('../MiddleWare/checkRole');
 // Define routes
 
 
@@ -14,6 +16,9 @@ router.post('/create', storeController.createStore);
 router.get('/get/:storeId', storeController.getStore);
 router.get('/getactiveTheme/:storeID', storeController.getActiveTheme);
 
-router.patch('/update/:id',storeController.updateStore);
+router.patch('/update/:id', storeController.updateStore);
+
+//store delete
+router.put('/delete/:storeId', checkAuth, checkRole('owner'), storeController.deleteStore);
 // Export the router
 module.exports = router; 

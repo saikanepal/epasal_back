@@ -53,7 +53,7 @@ const orderSchema = new mongoose.Schema({
         type: String,
     },
     //esewa refrence
-    esewaTransactionID: [{ type: mongoose.Schema.Types.ObjectId, ref: 'EsewaTransaction' }],
+    esewaTransactionID: { type: mongoose.Schema.Types.ObjectId, ref: 'EsewaTransaction' },
 });
 
 const Order = mongoose.model('Order', orderSchema);

@@ -26,8 +26,7 @@ const storeSchema = new mongoose.Schema({
     products: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }], // Reference to Product model
     color: { type: Object }, // You can adjust this based on your requirements
 
-    //images 
-    logo: { type: String, required: true },
+
     HeroSection: {
         HeroSectionUrl: {
             type: String

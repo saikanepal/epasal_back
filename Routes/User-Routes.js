@@ -20,9 +20,11 @@ router.post('/verify', userController.verifyUser);
 router.use(checkAuth);
 
 // Route with role-based access control
-// router.get('/admin/dashboard', checkRole('Admin'), (req, res) => {
-//     res.send('Admin dashboard');
-// });
+router.put('/update-role', checkAuth, checkRole('Admin'), userController.updateUserRole);
+
+router.get('/admin/dashboard', checkRole('Admin'), (req, res) => {
+    res.send('Admin dashboard');
+});
 
 // Export the router
 module.exports = router;

@@ -161,7 +161,7 @@ const deleteStore = async (req, res) => {
                 continue; // Skip to the next product if not found
             }
 
-            if(product.image && product.image.imageID){
+            if (product.image && product.image.imageID) {
                 await cloudinary.uploader.destroy(product.image.imageID);
             }
             // Loop through each variant of the product
@@ -192,5 +192,6 @@ module.exports = {
     createStore,
     getStore,
     getActiveTheme,
-    updateStore
+    updateStore,
+    deleteStore
 };

@@ -156,5 +156,31 @@ const generateVerificationCode = () => {
     return code;
 };
 
+const updateUserRole = async (req, res) => {
+    const { userId, newRole } = req.body;
+
+    try {
+        const user = await User.findById(userId);
+
+        if (!user) {
+            throw { status: 404, message: 'User not found' };
+        }
+
+        const validRoles = ['Owner', 'Admin', 'Staff', 'Delivery'];
+        if (!validRoles.includes(newRole)) {
+            throw { status: 400, message: 'Invalid role' };
+        }
+
+        user.role = newRole;
+        await user.save();
+
+        res.status(200).json({ message: 'User role updated successfully' });
+    } catch (error) {
+        console.error(error.message);
+        const status = error.status || 500;
+        res.status(status).json({ message: error.message });
+    }
+};
+
 // Export the functions
-module.exports = { signUp, signIn, verifyUser };
+module.exports = { signUp, signIn, verifyUser ,updateUserRole};

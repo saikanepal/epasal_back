@@ -18,9 +18,9 @@ const productSchema = new mongoose.Schema({
     price: {
         type: Number
     },
-    image : {
-        imageUrl:{type:String},
-        imageID:{type:String}
+    image: {
+        imageUrl: { type: String },
+        imageID: { type: String }
     },
     //discount field 
     discountCap: {
@@ -41,8 +41,8 @@ const productSchema = new mongoose.Schema({
                 required: true
             },
             image: {
-                imageId: {type:String},
-                imageUrl: {type:String},
+                imageId: { type: String },
+                imageUrl: { type: String },
             },
             discount: {
                 type: Number,

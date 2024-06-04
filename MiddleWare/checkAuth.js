@@ -18,6 +18,6 @@ module.exports = (req, res, next) => {
         next();
     } catch (err) {
         console.log("get lost");
-        res.status(401).json({message:err.message});
+        res.status(401).json({ message: err.message });
     }
 };

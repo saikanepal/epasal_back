@@ -57,7 +57,7 @@ const addProduct = async (req, res) => {
     const { id, storeId } = req.body;
     try {
       const product = await Product.findById(id);
-      console.log(product)
+      
       if (!product) {
         return res.status(404).json({ success: false, message: "Product not found" });
       }
@@ -80,6 +80,7 @@ const addProduct = async (req, res) => {
       } else {
         return res.status(404).json({ success: false, message: "Store not found" });
       }
+      console.log(product)
       await Review.deleteMany({_id:{$in:product.review}})    //testing for review remaining
       await Product.findByIdAndDelete(id);
       return res.status(200).json({ success: true, message: "Product deleted Successfully" });

@@ -19,8 +19,15 @@ router.post('/verify', userController.verifyUser);
 // Middleware for checking user authentication (login)
 router.use(checkAuth);
 
-// Route with role-based access control
-router.put('/update-role', checkAuth, checkRole('Admin'), userController.updateUserRole);
+// Routes with role-based access control
+router.put('/ownerUpdate', checkRole('Owner'), userController.updateUserRoleByOwner);
+router.put('/adminUpdate', checkRole('Admin'), userController.updateUserRoleByAdmin);
+
+// Route for adding an employee role to a user
+router.post('/addEmployee', checkRole('Owner'), userController.addEmployee);
+
+// Route for deleting an employee role from a user
+router.delete('/deleteEmployee', checkRole('Owner'), userController.deleteEmployee);
 
 router.get('/admin/dashboard', checkRole('Admin'), (req, res) => {
     res.send('Admin dashboard');

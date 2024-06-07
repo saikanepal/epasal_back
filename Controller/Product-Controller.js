@@ -120,13 +120,29 @@ const addProduct = async (req, res) => {
     }
     return res.json("hello");
   };
+
+  const getProductByName = async (req, res) => {
+    const { name } = req.body;
+    try {
+      const product = await Product.find({ name: { $regex: new RegExp(name, 'i') } });
+      if (product.length===0) {
+        return res.status(404).json({ success: false, message: "Product not found" });
+      }
+      return res.status(200).json({ success: true, product });
+    } catch (err) {
+      console.error(err);
+      return res.status(400).json({ success: false, message: "Error in getting product" });
+    }
+    return res.json("hello");
+  };
   
   module.exports = {
     addProduct,
     updateProduct,
     DeleteProduct,
     getProductById,
-    getAllProductData
+    getAllProductData,
+    getProductByName
   };
 
 // const addProduct=(req,res)=>{

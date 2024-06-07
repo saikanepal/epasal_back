@@ -6,6 +6,7 @@ router.get('/getAllStoreProduct/:storeId',productController.getAllProductData)
 
 router.post('/addProduct',addProduct)
 router.post('/deleteProduct',DeleteProduct)
+router.post("/getProductByName",productController.getProductByName)
 
 
 module.exports = router;

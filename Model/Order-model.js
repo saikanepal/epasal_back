@@ -38,11 +38,12 @@ const orderSchema = new mongoose.Schema({
     },
 
     //location details ;to do
-    District: { type: String },
+
     location: {
         latitude: { type: String },
         longitude: { type: String }
     },
+    City: { type: String },
     address: {
         type: String
     },

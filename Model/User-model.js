@@ -26,11 +26,19 @@ const userSchema = new mongoose.Schema({
         default: false
     },
     stores: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Store' }],
-    role: {
-        type: String,
-        enum: ['Owner', 'Admin', 'Staff', 'Delivery'],
-        default: 'Staff'
-    }
+
+    roles: [{
+        storeId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Store',
+            required: true // Ensuring that storeId is always provided
+        },
+        role: {
+            type: String,
+            enum: ['Owner', 'Admin', 'Staff', 'Delivery'],
+            default: 'staff'
+        }
+    }]
 });
 
 const User = mongoose.model('User', userSchema);

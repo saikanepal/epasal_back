@@ -66,7 +66,7 @@ const createStore = async (req, res) => {
                 savedProducts.push(savedProduct);
             }
         }
-
+        console.log("inside store");
         // Create a new store instance
         const newStore = new Store({
             name,
@@ -79,7 +79,7 @@ const createStore = async (req, res) => {
             products: savedProducts,
             location,
             phoneNumber,
-            emailAddress: email,
+            email: email,
             color,
             secondaryBanner: secondaryBanner,
             previewMode,

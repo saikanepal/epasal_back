@@ -10,7 +10,7 @@ cloudinary.config({
 
 
 const storeSchema = new mongoose.Schema({
-    name: { type: String, required: true ,   unique: true, },
+    name: { type: String, required: true, unique: true, },
     logo: {
         logoUrl: {
             type: String
@@ -20,12 +20,20 @@ const storeSchema = new mongoose.Schema({
         }
     },
     phoneNumber: { type: String }, // Phone number of the store
-    emailAddress: { type: String }, // Email address of the store
+    email: { type: String }, // Email address of the store
     categories: [{ name: { type: String, required: true } }],
     subCategories: [{ name: { type: String, required: true } }],
     products: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }], // Reference to Product model
     color: { type: Object }, // You can adjust this based on your requirements
-    //images 
+    banner:{
+        bannerUrl:{
+            type:String
+        },
+        bannerID:{
+            type:String
+        }
+    },
+
     HeroSection: {
         HeroSectionUrl: {
             type: String
@@ -47,7 +55,8 @@ const storeSchema = new mongoose.Schema({
 
 
     //location 
-    location: { type:String
+    location: {
+        type: String
     }, // Location of the store
     address: { type: String },
 
@@ -117,6 +126,14 @@ const storeSchema = new mongoose.Schema({
             // expireDate : ' certain date' , after this date user recieves expired warning 
         }
     ],
+});
+
+storeSchema.pre('remove', async function (next) {
+    try {
+        await Product.deleteMany({ _id: { $in: this.order } });
+    } catch (err) {
+        next(err);
+    }
 });
 
 const Store = mongoose.model('Store', storeSchema);

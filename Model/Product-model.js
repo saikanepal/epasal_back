@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const Review = require('./Review-Model');
 const productSchema = new mongoose.Schema({
-
     name: {
         type: String,
         required: true
@@ -10,10 +9,12 @@ const productSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    category: {
+    category: [{
         type: String,
-        required: true
-    },
+    }],
+    subcategories: [{
+        type: String,
+    }],
     // need to deal with price oncce variant is introduced 
     price: {
         type: Number
@@ -24,11 +25,14 @@ const productSchema = new mongoose.Schema({
     },
     //discount field 
     priceVariant: {
-        type: String, 
+        type: String,
     },
     image: {
-        imageId:{type:String,required:true},
-        imageUrl:{type:String,required:true}
+        imageId: { type: String, required: true },
+        imageUrl: { type: String, required: true }
+    },
+    rating: {
+        type: Number
     },
     variant: [{
         name: {
@@ -59,15 +63,15 @@ const productSchema = new mongoose.Schema({
     //todo make another model for this 
     soldQuantity: {
         type: Number,
-        default:0
+        default: 0
     },
     revenueGenerated: {
         type: Number,
-        default:0
+        default: 0
     },
     inventory: {
         type: Number,
-        default:1
+        default: 1
     },// total amount of stocks of quantity 
     review: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -81,11 +85,11 @@ const productSchema = new mongoose.Schema({
 
 productSchema.pre('remove', async function (next) {
     try {
-      await Review.deleteMany({ _id: { $in: this.review } });
+        await Review.deleteMany({ _id: { $in: this.review } });
     } catch (err) {
-      next(err); // Propagate any errors
+        next(err); // Propagate any errors
     }
-  });
+});
 
 
 const Product = mongoose.model('Product', productSchema);

@@ -108,6 +108,14 @@ const storeSchema = new mongoose.Schema({
         heading: { type: String, default: "" },
         paragraph: { type: String, default: "" }
     },
+    offerBanner:{
+        offerBannerUrl:{
+            type:String
+        },
+        offerBannerID:{
+            type:String
+        }
+    },
     offerBannerText: {
         para1: { type: String, default: "" },
         para2: { type: String, default: "" },

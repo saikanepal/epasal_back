@@ -27,10 +27,7 @@ const productSchema = new mongoose.Schema({
     priceVariant: {
         type: String,
     },
-    image: {
-        imageId: { type: String, required: true },
-        imageUrl: { type: String, required: true }
-    },
+
     rating: {
         type: Number
     },

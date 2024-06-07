@@ -25,7 +25,8 @@ const createStore = async (req, res) => {
         socialMediaLinks,
         footerDescription,
         secondaryBannerText,
-        offerBannerText
+        offerBannerText,
+        offerBanner
     } = req.body.store;
 
     try {
@@ -96,6 +97,7 @@ const createStore = async (req, res) => {
                 para2: offerBannerText.para2,
                 para3: offerBannerText.para3
             },
+            offerBanner,
             owner: req.userData.userID // Set admin as req.userData.userID
         });
 

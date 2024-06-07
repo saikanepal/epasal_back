@@ -31,31 +31,31 @@ const createOrder = async (req, res) => {
 
         const { storeId } = req.params;
         const { orderDetails, esewaTransactionDetails } = req.body;
-        
+
         // Find the store by ID
         const store = await Store.findById(storeId);
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
-        
+
         // Create the EsewaTransaction
         const esewaTransaction = new EsewaTransaction(esewaTransactionDetails);
         await esewaTransaction.save();
-        
+
         // Create the order
         const order = new Order({ ...orderDetails, esewaTransactionID: esewaTransaction._id });
         await order.save();
-        
+
         // Update the store with the new order
         store.order.push(order._id);
         await store.save();
         res.status(201).json({ message: 'Order created successfully', order });
-    
+
     } catch (error) {
-    
+
         console.error(error);
         res.status(500).json({ message: error.message });
-        
+
     }
 };
 

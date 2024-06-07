@@ -23,8 +23,12 @@ const productSchema = new mongoose.Schema({
         imageID: { type: String }
     },
     //discount field 
-    discountCap: {
-        type: String, // higher or lower discount 
+    priceVariant: {
+        type: String, 
+    },
+    image: {
+        imageId:{type:String,required:true},
+        imageUrl:{type:String,required:true}
     },
     variant: [{
         name: {
@@ -32,7 +36,7 @@ const productSchema = new mongoose.Schema({
             required: true
         },
         options: [{
-            value: {
+            name: {
                 type: String,
                 required: true,
             },
@@ -51,14 +55,19 @@ const productSchema = new mongoose.Schema({
         }]
     }],
     //analytics
+
+    //todo make another model for this 
     soldQuantity: {
-        type: Number
+        type: Number,
+        default:0
     },
     revenueGenerated: {
-        type: Number
+        type: Number,
+        default:0
     },
     inventory: {
-        type: Number
+        type: Number,
+        default:1
     },// total amount of stocks of quantity 
     review: [{
         type: mongoose.Schema.Types.ObjectId,
@@ -70,6 +79,13 @@ const productSchema = new mongoose.Schema({
     }
 }, { timestamps: true });
 
+productSchema.pre('remove', async function (next) {
+    try {
+      await Review.deleteMany({ _id: { $in: this.review } });
+    } catch (err) {
+      next(err); // Propagate any errors
+    }
+  });
 
 
 const Product = mongoose.model('Product', productSchema);

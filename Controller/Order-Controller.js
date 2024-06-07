@@ -28,6 +28,7 @@ const getAllOrders = async (req, res) => {
 // Create a new order for a specific store
 const createOrder = async (req, res) => {
     try {
+
         const { storeId } = req.params;
         const { orderDetails, esewaTransactionDetails } = req.body;
 
@@ -48,11 +49,13 @@ const createOrder = async (req, res) => {
         // Update the store with the new order
         store.order.push(order._id);
         await store.save();
-
         res.status(201).json({ message: 'Order created successfully', order });
+
     } catch (error) {
+
         console.error(error);
         res.status(500).json({ message: error.message });
+
     }
 };
 

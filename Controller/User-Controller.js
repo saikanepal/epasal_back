@@ -1,5 +1,6 @@
 // Require necessary modules
 const bcrypt = require('bcrypt');
+const Store = require('../Model/Store-model.js');
 const User = require('../Model/User-model');
 const crypto = require('crypto');
 const sendVerificationEmail = require('../utils/generateVerificationCode.js'); // Import the function
@@ -156,8 +157,62 @@ const generateVerificationCode = () => {
     return code;
 };
 
-const updateUserRole = async (req, res) => {
-    const { userId, newRole } = req.body;
+
+
+
+
+const addEmployee = async (req, res) => {
+    const { email, storeId, newRole } = req.body;
+    console.log("here");
+    console.log(req.body);
+
+    try {
+        // Check if the store exists
+        const store = await Store.findById(storeId);
+        if (!store) {
+            throw { status: 404, message: 'Store not found' };
+        }
+        console.log("sdasd");
+        // Find the user by email
+        const user = await User.findOne({ email: email });
+        if (!user) {
+            throw { status: 404, message: 'User not found' };
+        }
+
+        const validRoles = ['Staff', 'Delivery', 'Admin'];
+        if (!validRoles.includes(newRole)) {
+            throw { status: 400, message: 'Invalid role' };
+        }
+
+        // Check if the user already has a role for the specified store
+        const existingRole = user.roles.find(role => role.storeId.toString() === storeId);
+        if (existingRole) {
+            return res.status(400).json({ message: 'User already has a role for this store' });
+        }
+        user.stores.push(store._id);
+        // Add a new role entry
+        user.roles.push({ storeId, role: newRole });
+
+        // Save the user with the new role
+        await user.save();
+
+        // Add user ID to the store's staff array 
+        store.staff.push(user._id);
+        await store.save();
+
+        res.status(200).json({ message: 'Employee role added successfully' });
+    } catch (error) {
+        console.error('Error adding employee:', error);
+        const status = error.status || 500;
+        res.status(status).json({ message: error.message });
+    }
+};
+
+
+
+// Function for updating user role by an owner
+const updateUserRoleByOwner = async (req, res) => {
+    const { userId, storeId, newRole } = req.body;
 
     try {
         const user = await User.findById(userId);
@@ -166,15 +221,25 @@ const updateUserRole = async (req, res) => {
             throw { status: 404, message: 'User not found' };
         }
 
-        const validRoles = ['Owner', 'Admin', 'Staff', 'Delivery'];
+        const validRoles = ['Admin', 'Staff', 'Delivery'];
         if (!validRoles.includes(newRole)) {
             throw { status: 400, message: 'Invalid role' };
         }
 
-        user.role = newRole;
-        await user.save();
+        // Find the role entry for the specified store
+        const roleIndex = user.roles.findIndex(role => role.storeId.toString() === storeId);
 
+        if (roleIndex !== -1) {
+            // Update the existing role
+            user.roles[roleIndex].role = newRole;
+        } else {
+            // Add a new role entry
+            user.roles.push({ storeId, role: newRole });
+        }
+
+        await user.save();
         res.status(200).json({ message: 'User role updated successfully' });
+
     } catch (error) {
         console.error(error.message);
         const status = error.status || 500;
@@ -182,5 +247,80 @@ const updateUserRole = async (req, res) => {
     }
 };
 
+// Function for updating user role by an admin
+const updateUserRoleByAdmin = async (req, res) => {
+    const { userId, storeId, newRole } = req.body;
+
+    try {
+        const user = await User.findById(userId);
+
+        if (!user) {
+            throw { status: 404, message: 'User not found' };
+        }
+
+        const validRoles = ['Staff', 'Delivery'];
+        if (!validRoles.includes(newRole)) {
+            throw { status: 400, message: 'Invalid role' };
+        }
+
+        // Find the role entry for the specified store
+        const roleIndex = user.roles.findIndex(role => role.storeId.toString() === storeId);
+
+        if (roleIndex !== -1) {
+            // Update the existing role
+            user.roles[roleIndex].role = newRole;
+        } else {
+            // Add a new role entry
+            user.roles.push({ storeId, role: newRole });
+        }
+
+        await user.save();
+        res.status(200).json({ message: 'User role updated successfully' });
+
+    } catch (error) {
+        console.error(error.message);
+        const status = error.status || 500;
+        res.status(status).json({ message: error.message });
+    }
+};
+
+
+const deleteEmployee = async (req, res) => {
+    const { userId, storeId } = req.body;
+
+    try {
+        // Find the user by their ID
+        const user = await User.findById(userId);
+
+        if (!user) {
+            throw { status: 404, message: 'User not found' };
+        }
+
+        // Remove the role entry for the specified store
+        user.roles = user.roles.filter(role => role.storeId.toString() !== storeId);
+
+        // Remove the store ID from the user's stores array
+        user.stores = user.stores.filter(store => store.toString() !== storeId);
+
+        await user.save();
+
+        // Find the store by its ID
+        const store = await Store.findById(storeId);
+        if (!store) {
+            throw { status: 404, message: 'Store not found' };
+        }
+
+        // Remove the user ID from the store's staff array
+        await Store.updateOne({ _id: storeId }, { $pull: { staff: userId } });
+
+        res.status(200).json({ message: 'Employee role deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting employee role:', error);
+        const status = error.status || 500;
+        res.status(status).json({ message: error.message });
+    }
+};
+
+
 // Export the functions
-module.exports = { signUp, signIn, verifyUser ,updateUserRole};
+module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee };

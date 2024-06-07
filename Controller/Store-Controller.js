@@ -1,10 +1,32 @@
 const Store = require('../Model/Store-model'); // Import the Store model
 const Product = require('../Model/Product-model'); // Import the Product model
-const User = require('../Model/User-model'); // Import the User model
+const User = require('../Model/User-model'); // Import the User model|
+
+
 const createStore = async (req, res) => {
     console.log(req.body);
+    console.log(req.userData.userID);
+    console.log("inside store");
 
-    const { name, logo, categories, subCategories, products, location, phoneNumber, email, color, secondaryBanner, previewMode, selectedSubCategory, cart, socialMediaLinks, footerDescription } = req.body;
+    const {
+        name,
+        logo,
+        categories,
+        subCategories,
+        products,
+        location,
+        phoneNumber,
+        email,
+        color,
+        secondaryBanner,
+        previewMode,
+        selectedSubCategory,
+        cart,
+        socialMediaLinks,
+        footerDescription,
+        secondaryBannerText,
+        offerBannerText
+    } = req.body.store;
 
     try {
         // Create products if products data is provided
@@ -12,16 +34,31 @@ const createStore = async (req, res) => {
         if (products && products.length > 0) {
             // Iterate through products and create them
             for (const productData of products) {
-                const { name, image, categories, subcategories, sizes, variants } = productData;
+                const {
+                    name,
+                    description,
+                    category,
+                    price,
+                    image,
+                    variant,
+                    soldQuantity,
+                    revenueGenerated,
+                    inventory,
+                    discount
+                } = productData;
 
                 // Create a new product instance
                 const newProduct = new Product({
                     name,
+                    description,
+                    category,
+                    price,
                     image,
-                    categories,
-                    subcategories,
-                    sizes,
-                    variants
+                    variant,
+                    soldQuantity,
+                    revenueGenerated,
+                    inventory,
+                    discount
                 });
 
                 // Save the product to the database
@@ -33,30 +70,46 @@ const createStore = async (req, res) => {
         // Create a new store instance
         const newStore = new Store({
             name,
-            logo,
+            logo: {
+                logoUrl: logo.logoUrl,
+                logoID: logo.logoID
+            },
             categories,
             subCategories,
-            products: savedProducts, // Use savedProducts array instead of just products
+            products: savedProducts,
             location,
             phoneNumber,
-            emailAddress: email,
+            email: email,
             color,
-            secondaryBanner,
-            previewMode: true,
+            secondaryBanner: secondaryBanner,
+            previewMode,
             selectedSubCategory,
             cart,
             socialMediaLinks,
             footerDescription,
-            admin: "665f1556800c3d1ae681ea57" // Set admin as req.userData.userID
+            secondaryBannerText: {
+                heading: secondaryBannerText.heading,
+                paragraph: secondaryBannerText.paragraph
+            },
+            offerBannerText: {
+                para1: offerBannerText.para1,
+                para2: offerBannerText.para2,
+                para3: offerBannerText.para3
+            },
+            owner: req.userData.userID // Set admin as req.userData.userID
         });
 
         // Save the store to the database
         await newStore.save();
 
-        // Update user document to include the new store ID
-        const user = await User.findById("665f1556800c3d1ae681ea57");     //req.userData.userID this is in place of static data
+        // Update user document to include the new store ID and the Owner role
+        const user = await User.findById(req.userData.userID);
         if (user) {
             user.stores.push(newStore._id); // Add new store ID to user's stores array
+            user.roles.push({
+                storeId: newStore._id,
+                role: 'Owner'
+            }); // Add new role with storeId and role 'Owner'
             await user.save();
         }
 
@@ -67,25 +120,28 @@ const createStore = async (req, res) => {
     }
 };
 
+
+
+
 const getStore = async (req, res) => {
-    console.log("inside getStore", req.params.storeId)
+    console.log("inside getStore", req.params.storeId);
     try {
-        // Retrieve store with a maximum limit of 30 products
-        const store = await Store.findById(req.params.storeId).populate({
-            path: 'products',
-            options: { limit: 30 } // Limit the number of populated products to 30
-        });
+        // Retrieve store with all products
+        const store = await Store.findById(req.params.storeId)
+            .populate('products')
+            .populate('staff');
 
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
-        console.log(store)
+        console.log(store);
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
         console.error('Error retrieving store:', error);
         res.status(500).json({ message: 'Failed to retrieve store' });
     }
 };
+
 
 const getActiveTheme = async (req, res) => {
     try {

@@ -10,7 +10,7 @@ cloudinary.config({
 
 
 const storeSchema = new mongoose.Schema({
-    name: { type: String, required: true },
+    name: { type: String, required: true, unique: true, },
     logo: {
         logoUrl: {
             type: String
@@ -19,13 +19,20 @@ const storeSchema = new mongoose.Schema({
             type: String
         }
     },
-    phoneNumber: { type: String, required: true }, // Phone number of the store
-    emailAddress: { type: String, required: true }, // Email address of the store
+    phoneNumber: { type: String }, // Phone number of the store
+    email: { type: String }, // Email address of the store
     categories: [{ name: { type: String, required: true } }],
     subCategories: [{ name: { type: String, required: true } }],
     products: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }], // Reference to Product model
     color: { type: Object }, // You can adjust this based on your requirements
-
+    banner:{
+        bannerUrl:{
+            type:String
+        },
+        bannerID:{
+            type:String
+        }
+    },
 
     HeroSection: {
         HeroSectionUrl: {
@@ -49,8 +56,7 @@ const storeSchema = new mongoose.Schema({
 
     //location 
     location: {
-        latitude: { type: String },
-        longitude: { type: String }
+        type: String
     }, // Location of the store
     address: { type: String },
 
@@ -93,12 +99,20 @@ const storeSchema = new mongoose.Schema({
     // 
 
     footerDescription: { type: String },
-    admin: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Reference to User model for admin
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Reference to User model for admin
     staff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of references to User model for staff
     subscriptionStatus: { type: String, default: 'Silver' },// Subscription status field with default value 'Active'
     activeTheme: { type: Number, default: '1' },
     componentTheme: { type: Object },  //Navbar : 1 
-
+    secondaryBannerText: {
+        heading: { type: String, default: "" },
+        paragraph: { type: String, default: "" }
+    },
+    offerBannerText: {
+        para1: { type: String, default: "" },
+        para2: { type: String, default: "" },
+        para3: { type: String, default: "" }
+    },
     //promoCode : may need to restrict in controller
     promoCode: [
         {
@@ -116,11 +130,11 @@ const storeSchema = new mongoose.Schema({
 
 storeSchema.pre('remove', async function (next) {
     try {
-      await Product.deleteMany({ _id: { $in: this.order } });
+        await Product.deleteMany({ _id: { $in: this.order } });
     } catch (err) {
-      next(err);
+        next(err);
     }
-  });
+});
 
 const Store = mongoose.model('Store', storeSchema);
 module.exports = Store;

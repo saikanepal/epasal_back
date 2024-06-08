@@ -2,7 +2,6 @@
 const jwt = require('jsonwebtoken');
 
 module.exports = (req, res, next) => {
-    console.log("bruh");
     if (req.method == 'OPTIONS') {
         return next();
     }

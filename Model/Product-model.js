@@ -58,6 +58,7 @@ const productSchema = new mongoose.Schema({
             }
         }]
     }],
+
     //analytics
 
     //todo make another model for this 

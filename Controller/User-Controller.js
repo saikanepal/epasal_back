@@ -163,8 +163,7 @@ const generateVerificationCode = () => {
 
 const addEmployee = async (req, res) => {
     const { email, storeId, newRole } = req.body;
-    console.log("here");
-    console.log(req.body);
+
 
     try {
         // Check if the store exists
@@ -172,7 +171,6 @@ const addEmployee = async (req, res) => {
         if (!store) {
             throw { status: 404, message: 'Store not found' };
         }
-        console.log("sdasd");
         // Find the user by email
         const user = await User.findOne({ email: email });
         if (!user) {
@@ -213,8 +211,15 @@ const addEmployee = async (req, res) => {
 // Function for updating user role by an owner
 const updateUserRoleByOwner = async (req, res) => {
     const { userId, storeId, newRole } = req.body;
-
+    console.log("owner is updating");
     try {
+        const loggedInUser = await User.findById(req.userData.userID);
+        console.log(loggedInUser._id);
+        const loggedInUserRole = loggedInUser.roles.findIndex(role=> role.storeId.toString()===storeId);
+        if(loggedInUserRole.role != 'Owner' && loggedInUserRole.role == 'Admin'){
+            console.log("not right");
+            updateUserRoleByAdmin();
+        }
         const user = await User.findById(userId);
 
         if (!user) {
@@ -243,7 +248,7 @@ const updateUserRoleByOwner = async (req, res) => {
     } catch (error) {
         console.error(error.message);
         const status = error.status || 500;
-        res.status(status).json({ message: error.message });
+        res.status(402).json({ message: error.message });
     }
 };
 
@@ -287,7 +292,6 @@ const updateUserRoleByAdmin = async (req, res) => {
 
 const deleteEmployee = async (req, res) => {
     const { userId, storeId } = req.body;
-
     try {
         // Find the user by their ID
         const user = await User.findById(userId);

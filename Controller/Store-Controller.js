@@ -4,9 +4,7 @@ const User = require('../Model/User-model'); // Import the User model|
 
 
 const createStore = async (req, res) => {
-    console.log(req.body);
-    console.log(req.userData.userID);
-    console.log("inside store");
+
 
     const {
         name,
@@ -66,7 +64,6 @@ const createStore = async (req, res) => {
                 savedProducts.push(savedProduct);
             }
         }
-        console.log("inside store");
         // Create a new store instance
         const newStore = new Store({
             name,
@@ -124,7 +121,6 @@ const createStore = async (req, res) => {
 
 
 const getStore = async (req, res) => {
-    console.log("inside getStore", req.params.storeId);
     try {
         // Retrieve store with all products
         const store = await Store.findById(req.params.storeId)
@@ -134,7 +130,6 @@ const getStore = async (req, res) => {
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
-        console.log(store);
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
         console.error('Error retrieving store:', error);
@@ -164,7 +159,6 @@ const getActiveTheme = async (req, res) => {
 const updateStore = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
-    console.log(req.body);
 
     // Remove the products field from the updateData if it exists // products are being handled respectively 
     delete updateData.products;

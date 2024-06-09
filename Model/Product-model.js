@@ -28,12 +28,13 @@ const productSchema = new mongoose.Schema({
         type: String,
     },
     image: {
-        imageId: { type: String, required: true },
-        imageUrl: { type: String, required: true }
+        imageId: { type: String },
+        imageUrl: { type: String }
     },
     rating: {
         type: Number
     },
+
     variant: [{
         name: {
             type: String,
@@ -55,6 +56,9 @@ const productSchema = new mongoose.Schema({
             discount: {
                 type: Number,
                 default: 0
+            },
+            count:{
+                type:Number
             }
         }]
     }],

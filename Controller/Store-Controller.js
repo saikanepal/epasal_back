@@ -17,13 +17,14 @@ const createStore = async (req, res) => {
         email,
         color,
         secondaryBanner,
-        previewMode,
-        selectedSubCategory,
+        banner,
         cart,
+        offerBanner,
         socialMediaLinks,
         footerDescription,
         secondaryBannerText,
-        offerBannerText
+        offerBannerText,
+        featuredProducts,
     } = req.body.store;
 
     try {
@@ -71,6 +72,7 @@ const createStore = async (req, res) => {
                 logoUrl: logo.logoUrl,
                 logoID: logo.logoID
             },
+            banner,
             categories,
             subCategories,
             products: savedProducts,
@@ -79,8 +81,6 @@ const createStore = async (req, res) => {
             email: email,
             color,
             secondaryBanner: secondaryBanner,
-            previewMode,
-            selectedSubCategory,
             cart,
             socialMediaLinks,
             footerDescription,
@@ -88,11 +88,13 @@ const createStore = async (req, res) => {
                 heading: secondaryBannerText.heading,
                 paragraph: secondaryBannerText.paragraph
             },
+            offerBanner,
             offerBannerText: {
                 para1: offerBannerText.para1,
                 para2: offerBannerText.para2,
                 para3: offerBannerText.para3
             },
+            featuredProducts,
             owner: req.userData.userID // Set admin as req.userData.userID
         });
 

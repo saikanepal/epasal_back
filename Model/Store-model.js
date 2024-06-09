@@ -17,21 +17,14 @@ const storeSchema = new mongoose.Schema({
     email: { type: String }, // Email address of the store
     categories: [{ name: { type: String, required: true } }],
     subCategories: [{ name: { type: String, required: true } }],
-    products: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }], // Reference to Product model
+    products: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }], // Reference to Product model,
+    featuredProducts:[{type:Number}] ,
     color: { type: Object }, // You can adjust this based on your requirements
     banner: {
         bannerUrl: {
             type: String
         },
         bannerID: {
-            type: String
-        }
-    },
-    HeroSection: {
-        HeroSectionUrl: {
-            type: String
-        },
-        HeroSectionID: {
             type: String
         }
     },

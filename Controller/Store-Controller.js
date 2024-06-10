@@ -4,9 +4,7 @@ const User = require('../Model/User-model'); // Import the User model|
 
 
 const createStore = async (req, res) => {
-    console.log(req.body);
-    console.log(req.userData.userID);
-    console.log("inside store");
+
 
     const {
         name,
@@ -19,14 +17,14 @@ const createStore = async (req, res) => {
         email,
         color,
         secondaryBanner,
-        previewMode,
-        selectedSubCategory,
+        banner,
         cart,
+        offerBanner,
         socialMediaLinks,
         footerDescription,
         secondaryBannerText,
         offerBannerText,
-        offerBanner
+        featuredProducts,
     } = req.body.store;
 
     try {
@@ -67,7 +65,6 @@ const createStore = async (req, res) => {
                 savedProducts.push(savedProduct);
             }
         }
-        console.log("inside store");
         // Create a new store instance
         const newStore = new Store({
             name,
@@ -75,6 +72,7 @@ const createStore = async (req, res) => {
                 logoUrl: logo.logoUrl,
                 logoID: logo.logoID
             },
+            banner,
             categories,
             subCategories,
             products: savedProducts,
@@ -83,8 +81,6 @@ const createStore = async (req, res) => {
             email: email,
             color,
             secondaryBanner: secondaryBanner,
-            previewMode,
-            selectedSubCategory,
             cart,
             socialMediaLinks,
             footerDescription,
@@ -92,12 +88,13 @@ const createStore = async (req, res) => {
                 heading: secondaryBannerText.heading,
                 paragraph: secondaryBannerText.paragraph
             },
+            offerBanner,
             offerBannerText: {
                 para1: offerBannerText.para1,
                 para2: offerBannerText.para2,
                 para3: offerBannerText.para3
             },
-            offerBanner,
+            featuredProducts,
             owner: req.userData.userID // Set admin as req.userData.userID
         });
 
@@ -126,7 +123,6 @@ const createStore = async (req, res) => {
 
 
 const getStore = async (req, res) => {
-    console.log("inside getStore", req.params.storeId);
     try {
         // Retrieve store with all products
         const store = await Store.findById(req.params.storeId)
@@ -136,7 +132,6 @@ const getStore = async (req, res) => {
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
-        console.log(store);
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
         console.error('Error retrieving store:', error);
@@ -166,7 +161,6 @@ const getActiveTheme = async (req, res) => {
 const updateStore = async (req, res) => {
     const { id } = req.params;
     const updateData = req.body;
-    console.log(req.body);
 
     // Remove the products field from the updateData if it exists // products are being handled respectively 
     delete updateData.products;

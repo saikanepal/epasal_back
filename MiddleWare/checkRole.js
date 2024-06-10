@@ -5,19 +5,16 @@ const checkRole = (requiredRole) => {
     return async (req, res, next) => {
         const userID = req.userData.userID;
         const storeID = req.body.storeId; // Extracting storeID from the request body
-        console.log(req.body);
         try {
             // Check if the store exists
             const store = await Store.findById(storeID);
             if (!store) {
                 return res.status(404).json({ message: 'Store not found' });
             }
-            console.log(store);
             const user = await User.findById(userID);
             if (!user || !userID) {
                 return res.status(401).json({ message: 'User not authenticated' });
             }
-            console.log(user);
             // Define the role hierarchy
             const roleHierarchy = {
                 'Owner': 4,
@@ -28,10 +25,10 @@ const checkRole = (requiredRole) => {
 
             // Find the role for the specified store
             const userRoleForStore = user.roles.find(role => role.storeId.toString() === storeID);
-            console.log(userRoleForStore);
             if (userRoleForStore && roleHierarchy[userRoleForStore.role] >= roleHierarchy[requiredRole]) {
                 next(); // Allow access
             } else {
+                console.log("bad permission");
                 return res.status(403).json({ message: 'Access denied' });
             }
 

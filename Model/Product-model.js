@@ -27,10 +27,14 @@ const productSchema = new mongoose.Schema({
     priceVariant: {
         type: String,
     },
-
+    image: {
+        imageId: { type: String },
+        imageUrl: { type: String }
+    },
     rating: {
         type: Number
     },
+
     variant: [{
         name: {
             type: String,
@@ -52,9 +56,13 @@ const productSchema = new mongoose.Schema({
             discount: {
                 type: Number,
                 default: 0
+            },
+            count:{
+                type:Number
             }
         }]
     }],
+
     //analytics
 
     //todo make another model for this 

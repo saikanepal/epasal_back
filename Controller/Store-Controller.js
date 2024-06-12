@@ -5,7 +5,7 @@ const User = require('../Model/User-model'); // Import the User model|
 
 const createStore = async (req, res) => {
 
-
+    console.log(req.body,"req body")
     const {
         name,
         logo,
@@ -26,7 +26,7 @@ const createStore = async (req, res) => {
         offerBannerText,
         featuredProducts,
     } = req.body.store;
-
+    console.log(req.body.store,"store")
     try {
         // Create products if products data is provided
         let savedProducts = [];
@@ -42,6 +42,7 @@ const createStore = async (req, res) => {
                     variant,
                     soldQuantity,
                     revenueGenerated,
+                    subcategories,
                     inventory,
                     discount
                 } = productData;
@@ -51,6 +52,7 @@ const createStore = async (req, res) => {
                     name,
                     description,
                     category,
+                    subcategories,
                     price,
                     image,
                     variant,
@@ -125,10 +127,10 @@ const createStore = async (req, res) => {
 const getStore = async (req, res) => {
     try {
         // Retrieve store with all products
-        const store = await Store.findById(req.params.storeId)
+        const store = await Store.findOne({name:req.params.storeName})
             .populate('products')
-            .populate('staff');
-
+            
+        console.log(store,"store")
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }

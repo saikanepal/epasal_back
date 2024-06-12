@@ -127,9 +127,9 @@ const createStore = async (req, res) => {
 const getStore = async (req, res) => {
     try {
         // Retrieve store with all products
-        const store = await Store.findById(req.params.storeId)
+        const store = await Store.findOne({name:req.params.storeName})
             .populate('products')
-            .populate('staff');
+            
         console.log(store,"store")
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });

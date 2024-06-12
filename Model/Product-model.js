@@ -27,10 +27,10 @@ const productSchema = new mongoose.Schema({
     priceVariant: {
         type: String,
     },
-    image: {
-        imageId: { type: String },
-        imageUrl: { type: String }
-    },
+    // image: {
+    //     imageId: { type: String },
+    //     imageUrl: { type: String }
+    // },
     rating: {
         type: Number
     },
@@ -50,7 +50,7 @@ const productSchema = new mongoose.Schema({
                 required: true
             },
             image: {
-                imageId: { type: String },
+                imageID: { type: String },
                 imageUrl: { type: String },
             },
             discount: {

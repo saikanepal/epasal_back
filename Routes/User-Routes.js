@@ -19,6 +19,9 @@ router.post('/verify', userController.verifyUser);
 // Middleware for checking user authentication (login)
 router.use(checkAuth);
 
+//routes to get logged in User
+router.get('getLoggedInUser', userController.getLoggedInUser)
+
 // Routes with role-based access control
 router.put('/ownerUpdate', checkRole('Owner'), userController.updateUserRoleByOwner);
 router.put('/adminUpdate', checkRole('Admin'), userController.updateUserRoleByAdmin);

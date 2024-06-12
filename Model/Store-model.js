@@ -52,9 +52,14 @@ const storeSchema = new mongoose.Schema({
     },
     //order and analytics
     revenueGenerated: { type: Number },
-    order: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    customers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    dueAmount : {type :Number},
+    pendingAmount :{type:Number},
+    mostSoldItem : {type:Number},
     visitors: { type: Number }, // todo : Restrict (react-cookie check?) = > rate limiter express?
     conversitionRate: { type: Number },  // order / visitors * 100 %
+
     // productSold: [{
     //     product: {
     //         type: mongoose.Schema.Types.ObjectId, ref: Product

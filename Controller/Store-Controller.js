@@ -141,6 +141,22 @@ const getStore = async (req, res) => {
     }
 };
 
+const getStoreByName = async (req, res) => {
+    try {
+        // Retrieve store with all products and staff based on storeName
+        const store = await Store.findOne({ name: req.params.storeName })
+            .populate('products')
+            .populate('staff');
+
+        if (!store) {
+            return res.status(404).json({ message: 'Store not found' });
+        }
+        res.status(200).json({ message: 'Store retrieved successfully', store });
+    } catch (error) {
+        console.error('Error retrieving store:', error);
+        res.status(500).json({ message: 'Failed to retrieve store' });
+    }
+};
 
 const getActiveTheme = async (req, res) => {
     try {
@@ -246,5 +262,6 @@ module.exports = {
     getStore,
     getActiveTheme,
     updateStore,
-    deleteStore
+    deleteStore,
+    getStoreByName
 };

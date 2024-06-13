@@ -4,7 +4,7 @@ const Product = require('./Product-model');
 
 
 const storeSchema = new mongoose.Schema({
-    name: { type: String, required: true, unique: true, },
+    name: { type: String, required: true },
     logo: {
         logoUrl: {
             type: String
@@ -88,6 +88,10 @@ const storeSchema = new mongoose.Schema({
     activeTheme: { type: Number, default: '1' },
     componentTheme: { type: Object },  //Navbar : 1 
     secondaryBannerText: {
+        heading: { type: String, default: "" },
+        paragraph: { type: String, default: "" }
+    },
+    thirdBannerText: {
         heading: { type: String, default: "" },
         paragraph: { type: String, default: "" }
     },

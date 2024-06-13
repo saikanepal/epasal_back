@@ -42,6 +42,23 @@ const addProduct = async (req, res) => {
   const updateProduct = async (req, res) => {
     const { id, updates } = req.body;
     try {
+      const productOld = await Product.findById(id);
+      
+      if (!productOld) {
+        return res.status(404).json({ success: false, message: "Product not found" });
+      }
+
+      if (productOld.image && productOld.image.imageId) {
+        await cloudinary.uploader.destroy(productOld.image.imageId);
+      }
+      // const store = await Store.findById(storeId);
+      for(items in productOld.variant){
+        for(item in items.options){
+          if(item.image.imageId!=null){
+            await cloudinary.uploader.destroy(item.image.imageId);
+          }
+        }
+      }
       const product = await Product.findByIdAndUpdate(id, updates, { new: true });
       if (!product) {
         return res.status(404).json({ success: false, message: "Product not found" });
@@ -66,7 +83,7 @@ const addProduct = async (req, res) => {
         await cloudinary.uploader.destroy(product.image.imageId);
       }
       const store = await Store.findById(storeId);
-      for(items in store.variant){
+      for(items in product.variant){
         for(item in items.options){
           if(item.image.imageId!=null){
             await cloudinary.uploader.destroy(item.image.imageId);

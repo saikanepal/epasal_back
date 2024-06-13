@@ -20,7 +20,7 @@ router.post('/verify', userController.verifyUser);
 router.use(checkAuth);
 
 //routes to get logged in User
-router.get('getLoggedInUser', userController.getLoggedInUser)
+router.get('/getLoggedInUser', userController.getLoggedInUser);
 
 // Routes with role-based access control
 router.put('/ownerUpdate', checkRole('Owner'), userController.updateUserRoleByOwner);

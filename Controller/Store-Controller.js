@@ -5,7 +5,7 @@ const User = require('../Model/User-model'); // Import the User model|
 
 const createStore = async (req, res) => {
 
-
+    console.log(req.body,"req body")
     const {
         name,
         logo,
@@ -20,16 +20,25 @@ const createStore = async (req, res) => {
         banner,
         cart,
         offerBanner,
+        thirdBanner,
+        thirdBannerText,
         socialMediaLinks,
         footerDescription,
         secondaryBannerText,
         offerBannerText,
+        fonts,
         featuredProducts,
     } = req.body.store;
-
+    console.log(req.body.store,"store")
     try {
         // Create products if products data is provided
+        const dataExists=await Store.findOne({name})
+        console.log(dataExists)
+        if(dataExists){
+            return res.status(400).json({message:"Store already exists"})
+        }
         let savedProducts = [];
+
         if (products && products.length > 0) {
             // Iterate through products and create them
             for (const productData of products) {
@@ -42,6 +51,7 @@ const createStore = async (req, res) => {
                     variant,
                     soldQuantity,
                     revenueGenerated,
+                    subcategories,
                     inventory,
                     discount
                 } = productData;
@@ -51,6 +61,7 @@ const createStore = async (req, res) => {
                     name,
                     description,
                     category,
+                    subcategories,
                     price,
                     image,
                     variant,
@@ -88,6 +99,8 @@ const createStore = async (req, res) => {
                 heading: secondaryBannerText.heading,
                 paragraph: secondaryBannerText.paragraph
             },
+            thirdBanner,
+            thirdBannerText,
             offerBanner,
             offerBannerText: {
                 para1: offerBannerText.para1,
@@ -95,6 +108,7 @@ const createStore = async (req, res) => {
                 para3: offerBannerText.para3
             },
             featuredProducts,
+            fonts,
             owner: req.userData.userID // Set admin as req.userData.userID
         });
 
@@ -125,10 +139,10 @@ const createStore = async (req, res) => {
 const getStore = async (req, res) => {
     try {
         // Retrieve store with all products
-        const store = await Store.findById(req.params.storeId)
+        const store = await Store.findOne({name:req.params.storeName})
             .populate('products')
-            .populate('staff');
-
+            
+        console.log(store,"store")
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
@@ -176,11 +190,12 @@ const getActiveTheme = async (req, res) => {
 
 const updateStore = async (req, res) => {
     const { id } = req.params;
-    const updateData = req.body;
+    const updateData = req.body.store;
 
     // Remove the products field from the updateData if it exists // products are being handled respectively 
+    // TODO Delete image left 
     delete updateData.products;
-
+    console.log(req.body.store,"my body")
     try {
         // Find the store by ID and update it with the new data
         const updatedStore = await Store.findByIdAndUpdate(id, updateData, {
@@ -192,7 +207,7 @@ const updateStore = async (req, res) => {
             return res.status(404).send({ error: 'Store not found' });
         }
 
-        res.send(updatedStore);
+        res.send({message:"Store Updated Successfully"});
     } catch (error) {
         console.error('Error updating store:', error);
         res.status(500).send({ error: 'Internal Server Error' });

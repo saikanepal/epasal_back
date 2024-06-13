@@ -4,7 +4,7 @@ const Product = require('./Product-model');
 
 
 const storeSchema = new mongoose.Schema({
-    name: { type: String, required: true, unique: true, },
+    name: { type: String, required: true },
     logo: {
         logoUrl: {
             type: String
@@ -52,9 +52,14 @@ const storeSchema = new mongoose.Schema({
     },
     //order and analytics
     revenueGenerated: { type: Number },
-    order: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    customers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    dueAmount : {type :Number},
+    pendingAmount :{type:Number},
+    mostSoldItem : {type:Number},
     visitors: { type: Number }, // todo : Restrict (react-cookie check?) = > rate limiter express?
     conversitionRate: { type: Number },  // order / visitors * 100 %
+
     // productSold: [{
     //     product: {
     //         type: mongoose.Schema.Types.ObjectId, ref: Product
@@ -86,6 +91,10 @@ const storeSchema = new mongoose.Schema({
         heading: { type: String, default: "" },
         paragraph: { type: String, default: "" }
     },
+    thirdBannerText: {
+        heading: { type: String, default: "" },
+        paragraph: { type: String, default: "" }
+    },
     offerBanner: {
         offerBannerUrl: {
             type: String
@@ -112,6 +121,9 @@ const storeSchema = new mongoose.Schema({
             // expireDate : ' certain date' , after this date user recieves expired warning 
         }
     ],
+    fonts:{
+        type:Object
+    }
 });
 
 storeSchema.pre('remove', async function (next) {

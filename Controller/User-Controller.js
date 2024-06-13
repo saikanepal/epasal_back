@@ -157,7 +157,20 @@ const generateVerificationCode = () => {
     return code;
 };
 
-
+const getLoggedInUser = async() => {
+    try {
+        const userId = req.userData.userID; 
+        const user = await User.findById(userId);
+        if (!user) {
+            throw new Error('User not found');
+        }
+        return user;
+    } catch (error) {
+        // Handle error
+        console.error("Error fetching user by ID:", error);
+        throw error;
+    }
+}
 
 
 
@@ -215,8 +228,8 @@ const updateUserRoleByOwner = async (req, res) => {
     try {
         const loggedInUser = await User.findById(req.userData.userID);
         console.log(loggedInUser._id);
-        const loggedInUserRole = loggedInUser.roles.findIndex(role=> role.storeId.toString()===storeId);
-        if(loggedInUserRole.role != 'Owner' && loggedInUserRole.role == 'Admin'){
+        const loggedInUserRole = loggedInUser.roles.findIndex(role => role.storeId.toString() === storeId);
+        if (loggedInUserRole.role != 'Owner' && loggedInUserRole.role == 'Admin') {
             console.log("not right");
             updateUserRoleByAdmin();
         }
@@ -327,4 +340,4 @@ const deleteEmployee = async (req, res) => {
 
 
 // Export the functions
-module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee };
+module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee ,getLoggedInUser};

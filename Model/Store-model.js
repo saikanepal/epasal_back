@@ -121,6 +121,9 @@ const storeSchema = new mongoose.Schema({
             // expireDate : ' certain date' , after this date user recieves expired warning 
         }
     ],
+    fonts:{
+        type:Object
+    }
 });
 
 storeSchema.pre('remove', async function (next) {

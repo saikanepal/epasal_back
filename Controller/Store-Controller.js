@@ -26,6 +26,7 @@ const createStore = async (req, res) => {
         footerDescription,
         secondaryBannerText,
         offerBannerText,
+        fonts,
         featuredProducts,
     } = req.body.store;
     console.log(req.body.store,"store")
@@ -107,6 +108,7 @@ const createStore = async (req, res) => {
                 para3: offerBannerText.para3
             },
             featuredProducts,
+            fonts,
             owner: req.userData.userID // Set admin as req.userData.userID
         });
 
@@ -188,11 +190,12 @@ const getActiveTheme = async (req, res) => {
 
 const updateStore = async (req, res) => {
     const { id } = req.params;
-    const updateData = req.body;
+    const updateData = req.body.store;
 
     // Remove the products field from the updateData if it exists // products are being handled respectively 
+    // TODO Delete image left 
     delete updateData.products;
-
+    console.log(req.body.store,"my body")
     try {
         // Find the store by ID and update it with the new data
         const updatedStore = await Store.findByIdAndUpdate(id, updateData, {
@@ -204,7 +207,7 @@ const updateStore = async (req, res) => {
             return res.status(404).send({ error: 'Store not found' });
         }
 
-        res.send(updatedStore);
+        res.send({message:"Store Updated Successfully"});
     } catch (error) {
         console.error('Error updating store:', error);
         res.status(500).send({ error: 'Internal Server Error' });

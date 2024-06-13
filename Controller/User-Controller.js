@@ -86,7 +86,7 @@ const signIn = async (req, res) => {
                 expiresIn: '24h'
             });
         if (!token) {
-            throw new Error("Signing Up Failed ,Please Try again Later")
+            throw new Error("Signing Up Failed ,Please Try again Later");
         }
 
         // Compare passwords
@@ -133,7 +133,7 @@ const verifyUser = async (req, res) => {
                 expiresIn: '24h'
             });
         if (!token) {
-            throw new Error("Signing Up Failed ,Please Try again Later")
+            throw new Error("Signing Up Failed ,Please Try again Later");
         }
 
         res.status(200).json
@@ -157,20 +157,22 @@ const generateVerificationCode = () => {
     return code;
 };
 
-const getLoggedInUser = async() => {
+const getLoggedInUser = async (req, res) => {
     try {
-        const userId = req.userData.userID; 
+        const userId = req.userData.userID;
+        console.log({ userId });
         const user = await User.findById(userId);
         if (!user) {
             throw new Error('User not found');
         }
-        return user;
+        return res.status(200).json({ message: 'User fetched successfully', user });
     } catch (error) {
         // Handle error
         console.error("Error fetching user by ID:", error);
-        throw error;
+        // throw error;
+        return res.status(404).json({ message: error.message });
     }
-}
+};
 
 
 
@@ -340,4 +342,4 @@ const deleteEmployee = async (req, res) => {
 
 
 // Export the functions
-module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee ,getLoggedInUser};
+module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee, getLoggedInUser };

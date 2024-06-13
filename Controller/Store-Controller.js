@@ -20,6 +20,8 @@ const createStore = async (req, res) => {
         banner,
         cart,
         offerBanner,
+        thirdBanner,
+        thirdBannerText,
         socialMediaLinks,
         footerDescription,
         secondaryBannerText,
@@ -29,7 +31,13 @@ const createStore = async (req, res) => {
     console.log(req.body.store,"store")
     try {
         // Create products if products data is provided
+        const dataExists=await Store.findOne({name})
+        console.log(dataExists)
+        if(dataExists){
+            return res.status(400).json({message:"Store already exists"})
+        }
         let savedProducts = [];
+
         if (products && products.length > 0) {
             // Iterate through products and create them
             for (const productData of products) {
@@ -90,6 +98,8 @@ const createStore = async (req, res) => {
                 heading: secondaryBannerText.heading,
                 paragraph: secondaryBannerText.paragraph
             },
+            thirdBanner,
+            thirdBannerText,
             offerBanner,
             offerBannerText: {
                 para1: offerBannerText.para1,

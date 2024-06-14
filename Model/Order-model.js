@@ -3,7 +3,7 @@ const Product = require('./Product-model');
 const EsewaTransaction = require('./Esewa-model');
 
 const orderSchema = new mongoose.Schema({
-    
+
     // Customer details
     fullName: { type: String, required: true },
     phoneNumber: { type: String, required: true },
@@ -12,7 +12,7 @@ const orderSchema = new mongoose.Schema({
     // Order status
     status: {
         type: String,
-        enum: ['processing', 'delivered', 'cancelled', 'being delivered' , 'refunded'],
+        enum: ['processing', 'delivered', 'cancelled', 'being delivered', 'refunded'],
         default: 'processing'
     },
 
@@ -21,19 +21,19 @@ const orderSchema = new mongoose.Schema({
         {
             product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
             price: { type: Number, required: true }, // this should already include count * price
-            discountAmount :{type:Number , default:0},
+            discountAmount: { type: Number, default: 0 },
             count: { type: Number, required: true, default: 1 },
             selectedvariant: [{
                 name: {
                     type: String,
                     required: true,
-                    default:'default'
+                    default: 'default'
                 },
                 options: {
                     name: {
                         type: String,
                         required: true,
-                        default:'default'
+                        default: 'default'
                     }
                 }
             }],
@@ -43,7 +43,7 @@ const orderSchema = new mongoose.Schema({
     // Amount details
     price: { type: Number, required: true }, // total added price ( already discounted)
     totalPrice: { type: Number, required: true }, // after discount + delivery charge - promo discount
-    deliveryCharge: { type: Number, default: 0 }, 
+    deliveryCharge: { type: Number, default: 0 },
 
     // Promo details
     promoCode: { type: String },

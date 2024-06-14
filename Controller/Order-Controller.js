@@ -1,14 +1,12 @@
 const Store = require('../Model/User-model');
+const Product = require('../Model/Product-model');
 const Order = require('../Model/Order-model');
 const EsewaTransaction = require('../Model/Esewa-model');
 
 
 
-//creating a order
-const createOrder = async (req, res) => {
-    const session = await mongoose.startSession();
-    session.startTransaction();
 
+const createOrder = async (req, res) => {
     try {
         const {
             fullName,
@@ -26,62 +24,63 @@ const createOrder = async (req, res) => {
             esewaTransactionID
         } = req.body;
 
-        const { storeID } = req.params;
-
-        // Validate the store
-        const store = await Store.findById(storeID).session(session);
-        if (!store) {
-            await session.abortTransaction();
-            session.endSession();
-            return res.status(400).json({ error: `Store with ID ${storeID} not found` });
+        // Validate required fields
+        if (!fullName || !phoneNumber || !cart || cart.length === 0 || !price || !totalPrice) {
+            return res.status(400).json({ message: 'Missing required fields' });
         }
 
-        // Validate cart items
-        for (const item of cart) {
-            const product = await Product.findById(item.product).session(session);
+        // Validate and populate products in the cart
+        const populatedCart = await Promise.all(cart.map(async item => {
+            const product = await Product.findById(item.product);
             if (!product) {
-                await session.abortTransaction();
-                session.endSession();
-                return res.status(400).json({ error: `Product with ID ${item.product} not found` });
+                throw new Error(`Product with ID ${item.product} not found`);
             }
 
-            if (item.selectedvariant && item.selectedvariant.length > 0) {
-                const firstVariant = item.selectedvariant[0];
+            // Check for stock availability
+            if (item.selectedvariant[0].name === 'default') {
+                // Check product inventory
+                if (item.count > product.inventory) {
+                    throw new Error(`Product with ID ${item.product} is out of stock`);
+                }
+            } else {
+                // Find the variant
+                const variant = product.variant.find(v => v.name === item.selectedvariant[0].name);
+                if (!variant) {
+                    throw new Error(`Variant ${item.selectedvariant[0].name} not found for product with ID ${item.product}`);
+                }
 
-                if (firstVariant.name === 'default') {
-                    // Check if the product inventory is still available
-                    if (product.inventory < item.count) {
-                        await session.abortTransaction();
-                        session.endSession();
-                        return res.status(400).json({ error: `Product with ID ${item.product} is out of stock` });
-                    }
-                } else {
-                    // Check the product's first variant for count
-                    const productVariant = product.variants.find(variant => variant.name === firstVariant.name);
-                    if (!productVariant || productVariant.count < item.count) {
-                        await session.abortTransaction();
-                        session.endSession();
-                        return res.status(400).json({ error: `Variant ${firstVariant.name} of product with ID ${item.product} is out of stock` });
-                    }
+                // Find the option
+                const option = variant.options.find(o => o.name === item.selectedvariant[0].options.name);
+                if (!option) {
+                    throw new Error(`Option ${item.selectedvariant[0].options.name} not found in variant ${item.selectedvariant[0].name} for product with ID ${item.product}`);
+                }
+
+                // Check option count
+                if (item.count > option.count) {
+                    throw new Error(`Option ${item.selectedvariant[0].options.name} in variant ${item.selectedvariant[0].name} for product with ID ${item.product} is out of stock`);
                 }
             }
-        }
 
-        // Validate EsewaTransaction if payment method is Esewa
+            return {
+                ...item,
+                product: product._id
+            };
+        }));
+
+        // Validate Esewa transaction if payment method is Esewa
         if (paymentMethod === 'Esewa' && esewaTransactionID) {
-            const esewaTransaction = await EsewaTransaction.findById(esewaTransactionID).session(session);
-            if (!esewaTransaction) {
-                await session.abortTransaction();
-                session.endSession();
-                return res.status(400).json({ error: `EsewaTransaction with ID ${esewaTransactionID} not found` });
+            const transaction = await EsewaTransaction.findById(esewaTransactionID);
+            if (!transaction) {
+                return res.status(400).json({ message: 'Invalid Esewa transaction ID' });
             }
         }
 
+        // Create order document
         const newOrder = new Order({
             fullName,
             phoneNumber,
             email,
-            cart,
+            cart: populatedCart,
             price,
             totalPrice,
             deliveryCharge,
@@ -90,49 +89,21 @@ const createOrder = async (req, res) => {
             address,
             landmark,
             paymentMethod,
-            esewaTransactionID,
-            store: storeID // Associate the order with the store
+            esewaTransactionID
         });
 
-        const savedOrder = await newOrder.save({ session });
+        // Save order to the database
+        const savedOrder = await newOrder.save();
 
-        // Add the order to the store
-        store.orders.push(savedOrder._id);
-        await store.save({ session });
-
-        // Update product inventory
-        for (const item of cart) {
-            const product = await Product.findById(item.product).session(session);
-
-            if (item.selectedvariant && item.selectedvariant.length > 0) {
-                const firstVariant = item.selectedvariant[0];
-
-                if (firstVariant.name === 'default') {
-                    // Reduce the product inventory
-                    product.inventory -= item.count;
-                } else {
-                    // Reduce the count of the product's first variant
-                    const productVariant = product.variants.find(variant => variant.name === firstVariant.name);
-                    if (productVariant) {
-                        productVariant.count -= item.count;
-                    }
-                }
-
-                await product.save({ session });
-            }
-        }
-
-        await session.commitTransaction();
-        session.endSession();
-
-        res.status(201).json(savedOrder);
+        // Return the saved order
+        return res.status(201).json(savedOrder);
     } catch (error) {
-        await session.abortTransaction();
-        session.endSession();
         console.error(error);
-        res.status(500).json({ error: 'Server error' });
+        return res.status(500).json({ message: 'Server error', error: error.message });
     }
 };
+
+
 
 // Get all orders for a specific store
 const getAllOrders = async (req, res) => {

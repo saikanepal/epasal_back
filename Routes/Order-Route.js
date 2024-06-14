@@ -2,11 +2,15 @@ const express = require('express');
 const router = express.Router();
 const orderController = require('../Controller/Order-Controller');
 
-// Route to get all orders for a specific store
-router.get('/:storeId/orders', orderController.getAllOrders);
 
+//route to create a order
 // Route to create a new order for a specific store
-router.post('/:storeId/orders', orderController.createOrder);
+router.post('/create/:storeID', orderController.createOrder);
+
+// Route to get all orders for a specific store
+router.get('/order/:storeID', orderController.getAllOrders);
+
+
 
 // Route to update an existing order
 router.patch('/:orderId', orderController.updateOrder);

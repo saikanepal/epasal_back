@@ -6,8 +6,10 @@ const cors = require('cors');
 const morgan = require('morgan'); // Import Morgan
 const userRoute = require('./Routes/User-Routes');
 const storeRoute = require('./Routes/Store-Routes');
-const productRoute=require('./Routes/Product-Routes')
-const reviewRoute=require("./Routes/Review-Route")
+const productRoute=require('./Routes/Product-Routes');
+const reviewRoute=require("./Routes/Review-Route");
+const orderRoute=require("./Routes/Order-Route");
+
 const app = express();
 const PORT = process.env.PORT || 8000;
 
@@ -17,6 +19,7 @@ app.use(cors());
 app.use(morgan('combined')); // Use Morgan for logging
 
 // MongoDB connection
+console.log(process.env.DB_URL)
 mongoose
     .connect(process.env.DB_URL)
     .then(() => {
@@ -35,3 +38,5 @@ app.use('/api/users', userRoute);
 app.use('/api/store', storeRoute);
 app.use('/api/product',productRoute);
 app.use('/api/review/',reviewRoute);
+app.use('/api/order/',orderRoute);
+

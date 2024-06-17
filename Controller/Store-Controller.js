@@ -194,7 +194,7 @@ const updateStore = async (req, res) => {
 
     // Remove the products field from the updateData if it exists // products are being handled respectively 
     // TODO Delete image left 
-    delete updateData.products;
+    // delete updateData.products;
     console.log(req.body.store,"my body")
     try {
         // Find the store by ID and update it with the new data

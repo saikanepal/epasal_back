@@ -43,10 +43,27 @@ const orderSchema = new mongoose.Schema({
 
     // Payment details
     paymentMethod: { type: String, default: 'CashOnDelivery' },
-    esewaTransactionID: { type: mongoose.Schema.Types.ObjectId, ref: 'EsewaTransaction' }
+    esewaTransactionID: { type: mongoose.Schema.Types.ObjectId, ref: 'EsewaTransaction' },
+
+
+    //secretKey
+    deliveryCode: { type: String, required: true, unique: true, default: generateDeliveryCode },
 }, {
     timestamps: true
 });
+
+// Function to generate a unique delivery code
+function generateDeliveryCode() {
+    // Implement your code generation logic here
+    // Example: Generate a random alphanumeric code
+    const length = 8;
+    const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += charset.charAt(Math.floor(Math.random() * charset.length));
+    }
+    return result;
+}
 
 // Indexes
 orderSchema.index({ phoneNumber: 1 });

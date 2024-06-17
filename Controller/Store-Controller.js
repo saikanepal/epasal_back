@@ -5,7 +5,7 @@ const User = require('../Model/User-model'); // Import the User model|
 
 const createStore = async (req, res) => {
 
-    console.log(req.body,"req body")
+    console.log(req.body, "req body")
     const {
         name,
         logo,
@@ -29,13 +29,13 @@ const createStore = async (req, res) => {
         fonts,
         featuredProducts,
     } = req.body.store;
-    console.log(req.body.store,"store")
+    console.log(req.body.store, "store")
     try {
         // Create products if products data is provided
-        const dataExists=await Store.findOne({name})
+        const dataExists = await Store.findOne({ name })
         console.log(dataExists)
-        if(dataExists){
-            return res.status(400).json({message:"Store already exists"})
+        if (dataExists) {
+            return res.status(400).json({ message: "Store already exists" })
         }
         let savedProducts = [];
 
@@ -139,10 +139,10 @@ const createStore = async (req, res) => {
 const getStore = async (req, res) => {
     try {
         // Retrieve store with all products
-        const store = await Store.findOne({name:req.params.storeName})
+        const store = await Store.findOne({ name: req.params.storeName })
             .populate('products')
-            
-        console.log(store,"store")
+
+        console.log(store, "store")
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
@@ -194,8 +194,8 @@ const updateStore = async (req, res) => {
 
     // Remove the products field from the updateData if it exists // products are being handled respectively 
     // TODO Delete image left 
-    // delete updateData.products;
-    console.log(req.body.store,"my body")
+    delete updateData.products;
+    console.log(req.body.store, "my body")
     try {
         // Find the store by ID and update it with the new data
         const updatedStore = await Store.findByIdAndUpdate(id, updateData, {
@@ -207,7 +207,7 @@ const updateStore = async (req, res) => {
             return res.status(404).send({ error: 'Store not found' });
         }
 
-        res.send({message:"Store Updated Successfully"});
+        res.send({ message: "Store Updated Successfully" });
     } catch (error) {
         console.error('Error updating store:', error);
         res.status(500).send({ error: 'Internal Server Error' });

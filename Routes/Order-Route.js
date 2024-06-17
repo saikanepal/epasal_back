@@ -8,14 +8,13 @@ const orderController = require('../Controller/Order-Controller');
 router.post('/create/:storeID', orderController.createOrder);
 
 // Route to get all orders for a specific store
-router.get('/order/:storeID', orderController.getAllOrders);
+router.get('/get/:storeID', orderController.getOrdersByStore);
 
 
 
 // Route to update an existing order
-router.patch('/:orderId', orderController.updateOrder);
+router.put('/update/:orderId', orderController.updateOrder);
 
 // Route to delete an existing order
-router.delete('/:orderId', orderController.deleteOrder);
 
 module.exports = router;

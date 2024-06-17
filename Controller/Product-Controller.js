@@ -74,38 +74,48 @@ const addProduct = async (req, res) => {
     const { id, storeId } = req.body;
     try {
       const product = await Product.findById(id);
-      
       if (!product) {
         return res.status(404).json({ success: false, message: "Product not found" });
       }
-
-      if (product.image && product.image.imageId) {
-        await cloudinary.uploader.destroy(product.image.imageId);
+  
+      // Delete main product image if exists
+      if (product.image && product.image.imageID) {
+        await cloudinary.uploader.destroy(product.image.imageID);
       }
-      const store = await Store.findById(storeId);
-      for(items in product.variant){
-        for(item in items.options){
-          if(item.image.imageId!=null){
-            await cloudinary.uploader.destroy(item.image.imageId);
+  
+      // Delete variant images if they exist
+      if (product.variant && product.variant[0] && product.variant[0].options) {
+        const deletePromises = product.variant[0].options.map(async (item) => {
+          if (item.image && item.image.imageID) {
+            return cloudinary.uploader.destroy(item.image.imageID);
           }
-        }
+        });
+  
+        await Promise.all(deletePromises);
       }
-      
+  
+      // Find the store and remove the product reference
+      const store = await Store.findById(storeId);
       if (store) {
         store.products = store.products.filter(productId => productId.toString() !== id);
         await store.save();
       } else {
         return res.status(404).json({ success: false, message: "Store not found" });
       }
-      console.log(product)
-      await Review.deleteMany({_id:{$in:product.review}})    //testing for review remaining
+  
+      // Delete related reviews
+      await Review.deleteMany({ _id: { $in: product.review } });
+  
+      // Finally, delete the product
       await Product.findByIdAndDelete(id);
-      return res.status(200).json({ success: true, message: "Product deleted Successfully" });
+  
+      return res.status(200).json({ success: true, message: "Product deleted successfully" });
     } catch (err) {
       console.error(err);
       return res.status(400).json({ success: false, message: "Error in deleting product" });
     }
   };
+  
   
   const getAllProductData = async (req, res) => {
     const { storeId } = req.params;

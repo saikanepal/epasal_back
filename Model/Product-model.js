@@ -37,16 +37,15 @@ const productSchema = new mongoose.Schema({
     variant: [{
         name: {
             type: String,
-            required: true
+            default:'default'
         },
         options: [{
             name: {
                 type: String,
-                required: true,
+                default:'true'
             },
             price: {
                 type: Number,
-                required: true
             },
             image: {
                 imageID: { type: String },
@@ -56,8 +55,8 @@ const productSchema = new mongoose.Schema({
                 type: Number,
                 default: 0
             },
-            count:{
-                type:Number
+            count: {
+                type: Number
             }
         }]
     }],

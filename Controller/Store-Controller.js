@@ -1,11 +1,11 @@
 const Store = require('../Model/Store-model'); // Import the Store model
 const Product = require('../Model/Product-model'); // Import the Product model
 const User = require('../Model/User-model'); // Import the User model|
-
+const mongoose = require('mongoose');
 
 const createStore = async (req, res) => {
 
-    console.log(req.body, "req body")
+    console.log(req.body, "req body");
     const {
         name,
         logo,
@@ -29,13 +29,13 @@ const createStore = async (req, res) => {
         fonts,
         featuredProducts,
     } = req.body.store;
-    console.log(req.body.store, "store")
+    console.log(req.body.store, "store");
     try {
         // Create products if products data is provided
-        const dataExists = await Store.findOne({ name })
-        console.log(dataExists)
+        const dataExists = await Store.findOne({ name });
+        console.log(dataExists);
         if (dataExists) {
-            return res.status(400).json({ message: "Store already exists" })
+            return res.status(400).json({ message: "Store already exists" });
         }
         let savedProducts = [];
 
@@ -140,9 +140,9 @@ const getStore = async (req, res) => {
     try {
         // Retrieve store with all products
         const store = await Store.findOne({ name: req.params.storeName })
-            .populate('products')
+            .populate('products');
 
-        console.log(store, "store")
+        console.log(store, "store");
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
@@ -195,7 +195,7 @@ const updateStore = async (req, res) => {
     // Remove the products field from the updateData if it exists // products are being handled respectively 
     // TODO Delete image left 
     delete updateData.products;
-    console.log(req.body.store, "my body")
+    console.log(req.body.store, "my body");
     try {
         // Find the store by ID and update it with the new data
         const updatedStore = await Store.findByIdAndUpdate(id, updateData, {
@@ -212,7 +212,7 @@ const updateStore = async (req, res) => {
         console.error('Error updating store:', error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
-}
+};
 
 const deleteStore = async (req, res) => {
     try {
@@ -270,11 +270,156 @@ const deleteStore = async (req, res) => {
 };
 
 
+const getStoreByFilterV0 = async (req, res) => {
+    try {
+        let keyword = {};
+
+        // Keyword search for _id, owner, email, name, phoneNumber, address
+        if (req.query.search) {
+            if (mongoose.Types.ObjectId.isValid(req.query.search)) {
+                keyword.$or = [
+                    { _id: req.query.search },
+                    { owner: req.query.search }
+                ];
+            } else {
+                keyword.$or = [
+                    { email: { $regex: req.query.search, $options: "i" } },
+                    { name: { $regex: req.query.search, $options: "i" } },
+                    { phoneNumber: { $regex: req.query.search, $options: "i" } },
+                    { address: { $regex: req.query.search, $options: "i" } },
+                ];
+            }
+        }
+
+        // Numerical filters
+        if (req.query.dueAmount) {
+            keyword.dueAmount = Number(req.query.dueAmount);
+        }
+        if (req.query.pendingAmount) {
+            keyword.pendingAmount = Number(req.query.pendingAmount);
+        }
+        if (req.query.revenueGenerated) {
+            keyword.revenueGenerated = Number(req.query.revenueGenerated);
+        }
+
+        // Handle ranges for numerical fields if necessary
+        const parseRangeQuery = (query) => {
+            if (!query) return;
+            const range = {};
+            if (query.min) range.$gte = Number(query.min);
+            if (query.max) range.$lte = Number(query.max);
+            return range;
+        };
+
+        const dueAmountRange = parseRangeQuery(req.query.dueAmountRange);
+        if (dueAmountRange) {
+            keyword.dueAmount = dueAmountRange;
+        }
+
+        const pendingAmountRange = parseRangeQuery(req.query.pendingAmountRange);
+        if (pendingAmountRange) {
+            keyword.pendingAmount = pendingAmountRange;
+        }
+
+        const revenueGeneratedRange = parseRangeQuery(req.query.revenueGeneratedRange);
+        if (revenueGeneratedRange) {
+            keyword.revenueGenerated = revenueGeneratedRange;
+        }
+
+        const stores = await Store.find(keyword, { password: 0, __v: 0 });
+        return res.json({
+            stores: stores,
+        });
+    } catch (error) {
+        console.error('Error fetching stores:', error.message);
+        res.status(500).json({ message: 'Fetching stores failed, please try again later.', error: error.message });
+    }
+};
+
+const getStoreByFilter = async (req, res) => {
+    try {
+        let keyword = {};
+
+        // Keyword search for _id, owner, email, name, phoneNumber, address
+        if (req.query.search) {
+            if (mongoose.Types.ObjectId.isValid(req.query.search)) {
+                keyword.$or = [
+                    { _id: req.query.search },
+                    { owner: req.query.search }
+                ];
+            } else {
+                keyword.$or = [
+                    { email: { $regex: req.query.search, $options: "i" } },
+                    { location: { $regex: req.query.search, $options: "i" } },
+                    { name: { $regex: req.query.search, $options: "i" } },
+                    { phoneNumber: { $regex: req.query.search, $options: "i" } },
+                    { address: { $regex: req.query.search, $options: "i" } },
+                ];
+            }
+        }
+
+        // Numerical filters
+        if (req.query.dueAmount) {
+            keyword.dueAmount = Number(req.query.dueAmount);
+        }
+        if (req.query.pendingAmount) {
+            keyword.pendingAmount = Number(req.query.pendingAmount);
+        }
+        if (req.query.revenueGenerated) {
+            keyword.revenueGenerated = Number(req.query.revenueGenerated);
+        }
+
+        // Handle ranges for numerical fields if necessary
+        const parseRangeQuery = (query) => {
+            if (!query) return;
+            const range = {};
+            if (query.min) range.$gte = Number(query.min);
+            if (query.max) range.$lte = Number(query.max);
+            return range;
+        };
+
+        const dueAmountRange = parseRangeQuery(req.query.dueAmountRange);
+        if (dueAmountRange) {
+            keyword.dueAmount = dueAmountRange;
+        }
+
+        const pendingAmountRange = parseRangeQuery(req.query.pendingAmountRange);
+        if (pendingAmountRange) {
+            keyword.pendingAmount = pendingAmountRange;
+        }
+
+        const revenueGeneratedRange = parseRangeQuery(req.query.revenueGeneratedRange);
+        if (revenueGeneratedRange) {
+            keyword.revenueGenerated = revenueGeneratedRange;
+        }
+
+        // Pagination
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const stores = await Store.find(keyword, { __v: 0 })
+            .skip(skip)
+            .limit(limit);
+
+        return res.json({
+            stores: stores,
+            page: page,
+            limit: limit,
+            hasNextPage: stores.length === limit
+        });
+    } catch (error) {
+        console.error('Error fetching stores:', error.message);
+        res.status(500).json({ message: 'Fetching stores failed, please try again later.', error: error.message });
+    }
+};
+
 module.exports = {
     createStore,
     getStore,
     getActiveTheme,
     updateStore,
     deleteStore,
-    getStoreByName
+    getStoreByName,
+    getStoreByFilter
 };

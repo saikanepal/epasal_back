@@ -51,14 +51,14 @@ const storeSchema = new mongoose.Schema({
         linkedin: { type: String }
     },
     //order and analytics
-    revenueGenerated: { type: Number },
+    revenueGenerated: { type: Number , default :0},
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
     customers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
-    dueAmount: { type: Number },
-    pendingAmount: { type: Number },
+    dueAmount: { type: Number, default: 0 },
+    pendingAmount: { type: Number, default: 0 },
     mostSoldItem: { type: Number },
-    visitors: { type: Number }, // todo : Restrict (react-cookie check?) = > rate limiter express?
-    conversitionRate: { type: Number },  // order / visitors * 100 %
+    visitors: { type: Number, default: 0 }, // todo : Restrict (react-cookie check?) = > rate limiter express?
+    conversitionRate: { type: Number, default: 0 },  // order / visitors * 100 %
 
     // productSold: [{
     //     product: {

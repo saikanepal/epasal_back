@@ -18,7 +18,7 @@ const storeSchema = new mongoose.Schema({
     categories: [{ name: { type: String, required: true } }],
     subCategories: [{ name: { type: String, required: true } }],
     products: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }], // Reference to Product model,
-    featuredProducts:[{type:Number}] ,
+    featuredProducts: [{ type: Number }],
     color: { type: Object }, // You can adjust this based on your requirements
     banner: {
         bannerUrl: {
@@ -51,14 +51,14 @@ const storeSchema = new mongoose.Schema({
         linkedin: { type: String }
     },
     //order and analytics
-    revenueGenerated: { type: Number },
+    revenueGenerated: { type: Number , default :0},
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
     customers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
-    dueAmount : {type :Number},
-    pendingAmount :{type:Number},
-    mostSoldItem : {type:Number},
-    visitors: { type: Number }, // todo : Restrict (react-cookie check?) = > rate limiter express?
-    conversitionRate: { type: Number },  // order / visitors * 100 %
+    dueAmount: { type: Number, default: 0 },
+    pendingAmount: { type: Number, default: 0 },
+    mostSoldItem: { type: Number },
+    visitors: { type: Number, default: 0 }, // todo : Restrict (react-cookie check?) = > rate limiter express?
+    conversitionRate: { type: Number, default: 0 },  // order / visitors * 100 %
 
     // productSold: [{
     //     product: {
@@ -121,15 +121,24 @@ const storeSchema = new mongoose.Schema({
             // expireDate : ' certain date' , after this date user recieves expired warning 
         }
     ],
-    fonts:{
-        type:Object
+    fonts: {
+        type: Object
     }
 });
 
+// Pre-remove hook to handle cleanup of related orders and products before a Store document is removed
 storeSchema.pre('remove', async function (next) {
     try {
-        await Product.deleteMany({ _id: { $in: this.order } });
+        // Delete all Order documents where the _id is in the orders array of the Store document being removed
+        await Order.deleteMany({ _id: { $in: this.orders } });
+
+        // Delete all Product documents where the _id is in the products array of the Store document being removed
+        await Product.deleteMany({ _id: { $in: this.products } });
+
+        // Proceed to the next middleware or the actual removal of the Store document
+        next();
     } catch (err) {
+        // Pass any errors to the next middleware
         next(err);
     }
 });

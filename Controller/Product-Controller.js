@@ -11,20 +11,22 @@ cloudinary.config({
 
 
 const addProduct = async (req, res) => {
-    const { name, description, category, price, variant, inventory, storeId } = req.body;
+    const { name, description, image,category, price, variant, inventory, storeId ,subcategories} = req.body.formState;
+    console.log(req.body,"req body")
     try {
       const newProduct = new Product({
         name,
         description,
         category,
+        subcategories,
         price,
         variant,
         inventory,
-        image: variant[0].options[0].image
+        image
       });
       await newProduct.save();
   
-      const store = await Store.findById(storeId);
+      const store = await Store.findById(req.body.storeID);
       if (store) {
         store.products.push(newProduct._id);
         await store.save();
@@ -71,8 +73,9 @@ const addProduct = async (req, res) => {
   };
   
   const DeleteProduct = async (req, res) => {
-    const { id, storeId } = req.body;
+    const { id,storeId } = req.body;
     try {
+      console.log(req.body,"aindoa")
       const product = await Product.findById(id);
       if (!product) {
         return res.status(404).json({ success: false, message: "Product not found" });

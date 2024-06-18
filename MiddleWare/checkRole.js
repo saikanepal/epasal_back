@@ -4,7 +4,7 @@ const Store = require('../Model/Store-model'); // Import the Store model
 const checkRole = (requiredRole) => {
     return async (req, res, next) => {
         const userID = req.userData.userID;
-        const storeID = req.body.storeId; // Extracting storeID from the request body
+        const storeID = req.body.storeId || req.query.storeId;
         try {
             // Check if the store exists
             const store = await Store.findById(storeID);

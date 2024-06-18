@@ -18,7 +18,7 @@ const orderSchema = new mongoose.Schema({
     // Product details
     cart: [{
         product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-        productName :{type:String},
+        productName: { type: String },
         price: { type: Number, required: true }, // this should already include discounted price 
         discountAmount: { type: Number, default: 0 },
         count: { type: Number, required: true, default: 1 },
@@ -56,7 +56,7 @@ const orderSchema = new mongoose.Schema({
 function generateDeliveryCode() {
     // Implement your code generation logic here
     // Example: Generate a random alphanumeric code
-    const length = 8;
+    const length = 4;
     const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     let result = '';
     for (let i = 0; i < length; i++) {

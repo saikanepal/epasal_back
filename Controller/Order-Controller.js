@@ -3,6 +3,7 @@ const Product = require('../Model/Product-model');
 const Order = require('../Model/Order-model');
 const EsewaTransaction = require('../Model/Esewa-model');
 const mongoose = require('mongoose');
+const { response } = require('express');
 
 
 
@@ -196,7 +197,8 @@ const getOrdersByStore = async (req, res) => {
                 match: searchConditions.length ? { $and: searchConditions } : {},
                 options: {
                     skip,
-                    limit
+                    limit,
+                    select: '-deliveryCode', // Exclude deliveryCode
                 },
                 populate: {
                     path: 'cart.product',
@@ -229,32 +231,80 @@ const getOrdersByStore = async (req, res) => {
 
 const updateOrder = async (req, res) => {
     const { orderId } = req.params;
-    const updates = req.body;
+    const { storeID } = req.params;
+    const { status, deliveryCode } = req.body;
+
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
     try {
-        // Validate if orderId is valid ObjectId (assuming using Mongoose)
+        // Validate if orderId is valid ObjectId
         if (!mongoose.Types.ObjectId.isValid(orderId)) {
+            await session.abortTransaction();
             return res.status(400).json({ message: 'Invalid order ID' });
         }
 
-        // Update the order
-        const updatedOrder = await Order.findByIdAndUpdate(orderId, updates, { new: true });
-
-        if (!updatedOrder) {
+        // Fetch the order to check the deliveryCode within the transaction
+        const order = await Order.findById(orderId).session(session);
+        if (!order) {
+            await session.abortTransaction();
             return res.status(404).json({ message: 'Order not found' });
         }
 
-        res.json({ message: 'Order updated successfully', order: updatedOrder });
+        // Check if order is already delivered
+        if (order.status === 'Delivered') {
+            await session.abortTransaction();
+            return res.status(403).json({ message: "Delivered Order can no longer be updated" });
+        }
+
+        // If status is "Delivered", check the deliveryCode
+        if (status === 'Delivered') {
+            if (!deliveryCode || deliveryCode !== order.deliveryCode) {
+                await session.abortTransaction();
+                return res.status(400).json({ message: 'Invalid delivery code' });
+            }
+
+            // Update the order status
+            const updatedOrder = await Order.findByIdAndUpdate(
+                orderId,
+                { status },
+                { new: true, session }
+            );
+
+            // Update store dueAmount only for COD orders within the transaction
+            if (order.paymentMethod === 'CashOnDelivery') {
+                const store = await Store.findById(storeID).session(session);
+                if (!store) {
+                    await session.abortTransaction();
+                    return res.status(404).json({ message: "store not found" });
+                }
+
+                const dueAmountIncrease = 0.03 * order.totalPrice;
+                store.dueAmount = store.dueAmount + dueAmountIncrease;
+                await store.save({ session });
+            }
+
+            await session.commitTransaction();
+            res.json({ message: 'Order updated successfully' });
+        } else {
+            // Update order status for non-delivered cases within the transaction
+            const updatedOrder = await Order.findByIdAndUpdate(orderId, req.body, { new: true, session });
+            await session.commitTransaction();
+            res.json({ message: 'Order updated successfully' });
+        }
     } catch (error) {
         console.error('Error updating order:', error.message);
+        await session.abortTransaction();
         res.status(500).json({ message: 'Failed to update order', error: error.message });
+    } finally {
+        session.endSession();
     }
 };
 
 
 
 
-module.exports = { createOrder, getOrdersByStore,updateOrder };
+module.exports = { createOrder, getOrdersByStore, updateOrder };
 
 
 

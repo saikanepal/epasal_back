@@ -4,7 +4,9 @@ const Product = require('./Product-model');
 
 
 const storeSchema = new mongoose.Schema({
-    name: { type: String, required: true },
+    name: { type: String, required: true }, //TODO : INDEX  
+    //!index is not done yet
+    // * filter
     logo: {
         logoUrl: {
             type: String
@@ -13,8 +15,8 @@ const storeSchema = new mongoose.Schema({
             type: String
         }
     },
-    phoneNumber: { type: String }, // Phone number of the store
-    email: { type: String }, // Email address of the store
+    phoneNumber: { type: String }, // Phone number of the store // * filter
+    email: { type: String }, // Email address of the store // * filter
     categories: [{ name: { type: String, required: true } }],
     subCategories: [{ name: { type: String, required: true } }],
     products: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }], // Reference to Product model,
@@ -40,7 +42,7 @@ const storeSchema = new mongoose.Schema({
     location: {
         type: String
     }, // Location of the store
-    address: { type: String },
+    address: { type: String },// * filter
 
     previewMode: { type: Boolean, default: true },
     //footer details
@@ -51,11 +53,11 @@ const storeSchema = new mongoose.Schema({
         linkedin: { type: String }
     },
     //order and analytics
-    revenueGenerated: { type: Number , default :0},
+    revenueGenerated: { type: Number, default: 0 },
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
     customers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
-    dueAmount: { type: Number, default: 0 },
-    pendingAmount: { type: Number, default: 0 },
+    dueAmount: { type: Number, default: 0, index: true },// * filter ascending or desceding 
+    pendingAmount: { type: Number, default: 0, index: true },// * filter ascending or descending
     mostSoldItem: { type: Number },
     visitors: { type: Number, default: 0 }, // todo : Restrict (react-cookie check?) = > rate limiter express?
     conversitionRate: { type: Number, default: 0 },  // order / visitors * 100 %
@@ -82,8 +84,8 @@ const storeSchema = new mongoose.Schema({
     // }],
     // 
     footerDescription: { type: String },
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Reference to User model for admin
-    staff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of references to User model for staff
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Reference to User model for admin// * filter
+    staff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of references to User model for staff // * filter
     subscriptionStatus: { type: String, default: 'Silver' },// Subscription status field with default value 'Active'
     activeTheme: { type: Number, default: '1' },
     componentTheme: { type: Object },  //Navbar : 1 
@@ -124,7 +126,7 @@ const storeSchema = new mongoose.Schema({
     fonts: {
         type: Object
     }
-});
+}, { timestamps: true });
 
 // Pre-remove hook to handle cleanup of related orders and products before a Store document is removed
 storeSchema.pre('remove', async function (next) {

@@ -153,13 +153,44 @@ const addProduct = async (req, res) => {
     return res.json("hello");
   };
   
+  const getAllStoreProductByPagination =async (req, res) => {
+    const { storeId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+  
+    try {
+      const store = await Store.findById(storeId).populate({
+        path: 'products',
+        options: {
+          skip: (page - 1) * limit,
+          limit: parseInt(limit),
+        },
+      });
+  
+      if (!store) {
+        return res.status(404).json({ message: 'Store not found' });
+      }
+  
+      const totalProducts = await Product.countDocuments({ _id: { $in: store.products } });
+      const totalPages = Math.ceil(totalProducts / limit);
+  
+      res.status(200).json({
+        products: store.products,
+        totalProducts,
+        totalPages,
+        currentPage: parseInt(page),
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching store products', error });
+    }
+  };
   module.exports = {
     addProduct,
     updateProduct,
     DeleteProduct,
     getProductById,
     getAllProductData,
-    getProductByName
+    getProductByName,
+    getAllStoreProductByPagination
   };
 
 // const addProduct=(req,res)=>{

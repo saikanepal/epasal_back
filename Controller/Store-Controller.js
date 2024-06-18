@@ -336,7 +336,7 @@ const getStoreByFilterV0 = async (req, res) => {
     }
 };
 
-const getStoreByFilter = async (req, res) => {
+const getStoreByFilterV1 = async (req, res) => {
     try {
         let keyword = {};
 
@@ -399,6 +399,100 @@ const getStoreByFilter = async (req, res) => {
         const skip = (page - 1) * limit;
 
         const stores = await Store.find(keyword, { __v: 0 })
+            .skip(skip)
+            .limit(limit);
+
+        return res.json({
+            stores: stores,
+            page: page,
+            limit: limit,
+            hasNextPage: stores.length === limit
+        });
+    } catch (error) {
+        console.error('Error fetching stores:', error.message);
+        res.status(500).json({ message: 'Fetching stores failed, please try again later.', error: error.message });
+    }
+};
+
+const getStoreByFilter = async (req, res) => {
+    try {
+        let keyword = {};
+
+        // Keyword search for _id, owner, staff, email, name, phoneNumber, address
+        if (req.query.search) {
+            if (mongoose.Types.ObjectId.isValid(req.query.search)) {
+                keyword.$or = [
+                    { _id: req.query.search },
+                    { owner: req.query.search },
+                    { staff: req.query.search }
+                ];
+            } else {
+                keyword.$or = [
+                    { email: { $regex: req.query.search, $options: "i" } },
+                    { name: { $regex: req.query.search, $options: "i" } },
+                    { location: { $regex: req.query.search, $options: "i" } },
+                    { phoneNumber: { $regex: req.query.search, $options: "i" } },
+                    { address: { $regex: req.query.search, $options: "i" } },
+                ];
+            }
+        }
+
+        // Numerical filters
+        if (req.query.dueAmount) {
+            keyword.dueAmount = Number(req.query.dueAmount);
+        }
+        if (req.query.pendingAmount) {
+            keyword.pendingAmount = Number(req.query.pendingAmount);
+        }
+        if (req.query.revenueGenerated) {
+            keyword.revenueGenerated = Number(req.query.revenueGenerated);
+        }
+
+        // Handle ranges for numerical fields if necessary
+        const parseRangeQuery = (query) => {
+            if (!query) return;
+            const range = {};
+            if (query.min) range.$gte = Number(query.min);
+            if (query.max) range.$lte = Number(query.max);
+            return range;
+        };
+
+        const dueAmountRange = parseRangeQuery(req.query.dueAmountRange);
+        if (dueAmountRange) {
+            keyword.dueAmount = dueAmountRange;
+        }
+
+        const pendingAmountRange = parseRangeQuery(req.query.pendingAmountRange);
+        if (pendingAmountRange) {
+            keyword.pendingAmount = pendingAmountRange;
+        }
+
+        const revenueGeneratedRange = parseRangeQuery(req.query.revenueGeneratedRange);
+        if (revenueGeneratedRange) {
+            keyword.revenueGenerated = revenueGeneratedRange;
+        }
+
+        // Pagination
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        // Keyset pagination with lastId
+        if (req.query.lastId) {
+            keyword._id = { $gt: req.query.lastId };
+        }
+
+        const stores = await Store.find(keyword, { 
+                name: 1, 
+                _id: 1, 
+                staff: 1, 
+                email: 1, 
+                phoneNumber: 1, 
+                location: 1, 
+                dueAmount: 1, 
+                pendingAmount: 1, 
+                revenueGenerated: 1 
+            })
             .skip(skip)
             .limit(limit);
 

@@ -29,7 +29,7 @@ const createStore = async (req, res) => {
         fonts,
         featuredProducts,
     } = req.body.store;
-    console.log(req.body.store, "store")
+    // console.log(req.body.store, "store")
     try {
         // Create products if products data is provided
         const dataExists = await Store.findOne({ name })

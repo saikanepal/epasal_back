@@ -56,7 +56,7 @@ const storeSchema = new mongoose.Schema({
     customers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
     dueAmount: { type: Number, default: 0 },
     pendingAmount: { type: Number, default: 0 },
-    mostSoldItem: { type: Number },
+    mostSoldItem: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
     visitors: { type: Number, default: 0 }, // todo : Restrict (react-cookie check?) = > rate limiter express?
     conversitionRate: { type: Number, default: 0 },  // order / visitors * 100 %
 

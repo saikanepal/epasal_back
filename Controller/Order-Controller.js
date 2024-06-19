@@ -189,14 +189,13 @@ const getOrdersByStore = async (req, res) => {
 
     console.log('Store ID:', storeID);
     console.log('Page:', page, 'Limit:', limit, 'Search Term:', searchTerm);
-
     try {
         // Initialize search conditions
         const searchConditions = [];
 
         // Split search terms by comma and trim spaces
         const searchTerms = searchTerm.split(',').map(term => term.trim());
-
+        console.log(searchTerms);
         // Only add search conditions if search terms are provided
         if (searchTerms.length > 0) {
             searchTerms.forEach(term => {

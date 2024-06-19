@@ -138,11 +138,11 @@ const createStore = async (req, res) => {
 
 const getStore = async (req, res) => {
     try {
-        // Retrieve store with all products
-        const store = await Store.findOne({ name: req.params.storeName })
-            .populate('products')
+        // Retrieve store with all products, case-insensitive search
+        const store = await Store.findOne({ name: { $regex: new RegExp('^' + req.params.storeName + '$', 'i') } })
+            .populate('products');
 
-        console.log(store, "store")
+        console.log(store, "store");
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
@@ -153,10 +153,11 @@ const getStore = async (req, res) => {
     }
 };
 
+
 const getStoreByName = async (req, res) => {
     try {
         // Retrieve store with all products and staff based on storeName
-        const store = await Store.findOne({ name: req.params.storeName })
+        const store = await Store.findOne({ name: { $regex: new RegExp('^' + req.params.storeName + '$', 'i') } })
             .populate('staff');
 
         if (!store) {

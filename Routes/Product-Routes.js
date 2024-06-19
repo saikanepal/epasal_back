@@ -6,6 +6,7 @@ router.get('/getAllStoreProduct/:storeId', productController.getAllProductData)
 
 router.get('/getAllProduct/:storeId', productController.getAllStoreProductByPagination);
 
+router.put('/updateProduct',productController.updateProduct);
 router.post('/addProduct', addProduct)
 router.post('/deleteProduct', DeleteProduct)
 router.post("/getProductByName", productController.getProductByName)

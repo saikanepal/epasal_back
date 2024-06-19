@@ -111,6 +111,32 @@ const storeSchema = new mongoose.Schema({
         para3: { type: String, default: "" }
     },
     //promoCode : may need to restrict in controller
+
+    esewa: {
+        accountNumber: { type: String },
+        qr: {
+            imageUrl: { type: String },
+            imageID: { type: String },
+        }
+    },
+
+    bank: {
+        accountNumber: { type: String },
+        fullname: { type: String },
+        qr: {
+            imageUrl: { type: String },
+            imageID: { type: String },
+        }
+    },
+
+    khalti: {
+        accountNumber: { type: String },
+        qr: {
+            imageUrl: { type: String },
+            imageID: { type: String },
+        }
+    },
+
     promoCode: [
         {
             name: {

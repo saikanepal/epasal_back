@@ -2,6 +2,7 @@ const Product = require("../Model/Product-model");
 const Review = require("../Model/Review-Model");
 const Store = require("../Model/Store-model");
 const cloudinary = require("cloudinary").v2;
+const mongoose = require('mongoose');
           
 cloudinary.config({ 
   cloud_name: 'djx7wx2lc', 
@@ -166,61 +167,91 @@ const addProduct = async (req, res) => {
     return res.json("hello");
   };
   
-  const getAllStoreProductByPagination = async (req, res) => {
-    const { storeId } = req.params;
-    const { page = 1, limit = 10, search = '', sortOrder = 'asc', productId, minPrice, maxPrice } = req.query;
-  
-    try {
-      const store = await Store.findById(storeId);
-      if (!store) {
-        return res.status(404).json({ message: 'Store not found' });
-      }
-  
-      const matchCriteria = {
-        $and: [
-          {
-            $or: [
-              { name: { $regex: search, $options: 'i' } },
-              { description: { $regex: search, $options: 'i' } },
-            ],
-          },
-          { _id: { $in: store.products } }
-        ]
-      };
-  
-      if (productId) {
-        matchCriteria.$and.push({ _id: productId });
-      }
-  
-      if (minPrice && maxPrice) {
-        matchCriteria.$and.push({ price: { $gte: parseFloat(minPrice), $lte: parseFloat(maxPrice) } });
-      } else if (minPrice) {
-        matchCriteria.$and.push({ price: { $gte: parseFloat(minPrice) } });
-      } else if (maxPrice) {
-        matchCriteria.$and.push({ price: { $lte: parseFloat(maxPrice) } });
-      }
-  
-      const products = await Product.aggregate([
-        { $match: matchCriteria },
-        { $sort: { revenueGenerated: sortOrder === 'asc' ? 1 : -1 } },
-        { $skip: (page - 1) * limit },
-        { $limit: parseInt(limit) }
-      ]);
-  
-      const totalProducts = await Product.countDocuments(matchCriteria);
-      const totalPages = Math.ceil(totalProducts / limit);
-  
-      res.status(200).json({
-        products,
-        totalProducts,
-        totalPages,
-        currentPage: parseInt(page),
+ const getAllStoreProductByPagination = async (req, res) => {
+  const { storeId } = req.params;
+  const { page = 1, limit = 10, search = '', sortOrder = 'asc', productId, minPrice, maxPrice } = req.query;
+
+  try {
+    // Initialize search conditions for products
+    const searchConditions = [];
+
+    // Split search terms by comma and trim spaces
+    const searchTerms = search.split(',').map(term => term.trim());
+
+    // Only add search conditions if search terms are provided
+    if (searchTerms.length > 0) {
+      searchTerms.forEach(term => {
+        const termConditions = [
+          { name: { $regex: term, $options: 'i' } },
+          { description: { $regex: term, $options: 'i' } }
+        ];
+
+        // Add additional search fields here if needed
+
+        if (mongoose.Types.ObjectId.isValid(term)) {
+          termConditions.push({ _id: mongoose.Types.ObjectId(term) });
+        }
+
+        searchConditions.push({ $or: termConditions });
       });
-    } catch (error) {
-      console.log(error);
-      res.status(500).json({ message: 'Error fetching store products', error });
     }
-  };
+
+    // Find the store by ID and populate its products
+    const store = await Store.findById(storeId).populate('products');
+    if (!store) {
+      return res.status(404).json({ message: 'Store not found' });
+    }
+
+    // Extract product IDs from populated store
+    const productIds = store.products.map(product => product._id);
+
+    // Initialize match criteria for product search
+    const matchCriteria = {
+      $and: [
+        { _id: { $in: productIds } },
+        ...(searchConditions.length > 0 ? searchConditions : [])
+      ]
+    };
+
+    // Push additional conditions based on query parameters
+    if (productId && mongoose.Types.ObjectId.isValid(productId)) {
+      matchCriteria.$and.push({ _id: mongoose.Types.ObjectId(productId) });
+    }
+
+    if (minPrice && maxPrice) {
+      matchCriteria.$and.push({ price: { $gte: parseFloat(minPrice), $lte: parseFloat(maxPrice) } });
+    } else if (minPrice) {
+      matchCriteria.$and.push({ price: { $gte: parseFloat(minPrice) } });
+    } else if (maxPrice) {
+      matchCriteria.$and.push({ price: { $lte: parseFloat(maxPrice) } });
+    }
+
+    // Perform aggregation to fetch products
+    const products = await Product.aggregate([
+      { $match: matchCriteria },
+      { $sort: { revenueGenerated: sortOrder === 'asc' ? 1 : -1 } },
+      { $skip: (parseInt(page) - 1) * parseInt(limit) },
+      { $limit: parseInt(limit) }
+    ]);
+
+    // Count total matching products
+    const totalProducts = await Product.countDocuments(matchCriteria);
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    // Send response
+    res.status(200).json({
+      products,
+      totalProducts,
+      totalPages,
+      currentPage: parseInt(page),
+    });
+
+  } catch (error) {
+    console.error('Error fetching store products:', error.message);
+    res.status(500).json({ message: 'Error fetching store products', error: error.message });
+  }
+};
+
   
   
   

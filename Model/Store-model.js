@@ -55,7 +55,7 @@ const storeSchema = new mongoose.Schema({
     //order and analytics
     revenueGenerated: { type: Number, default: 0 },
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
-    customers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    customers: {type:Number},
 
     dueAmount: { type: Number, default: 0 },
     pendingAmount: { type: Number, default: 0 },

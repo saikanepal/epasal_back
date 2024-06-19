@@ -168,7 +168,7 @@ const addProduct = async (req, res) => {
   
   const getAllStoreProductByPagination = async (req, res) => {
     const { storeId } = req.params;
-    const { page = 1, limit = 10, search = '', sortOrder = 'asc' } = req.query;
+    const { page = 1, limit = 10, search = '', sortOrder = 'asc', productId, minPrice, maxPrice } = req.query;
   
     try {
       const store = await Store.findById(storeId);
@@ -177,12 +177,28 @@ const addProduct = async (req, res) => {
       }
   
       const matchCriteria = {
-        $or: [
-          { name: { $regex: search, $options: 'i' } },
-          { description: { $regex: search, $options: 'i' } },
-        ],
-        _id: { $in: store.products }
+        $and: [
+          {
+            $or: [
+              { name: { $regex: search, $options: 'i' } },
+              { description: { $regex: search, $options: 'i' } },
+            ],
+          },
+          { _id: { $in: store.products } }
+        ]
       };
+  
+      if (productId) {
+        matchCriteria.$and.push({ _id: productId });
+      }
+  
+      if (minPrice && maxPrice) {
+        matchCriteria.$and.push({ price: { $gte: parseFloat(minPrice), $lte: parseFloat(maxPrice) } });
+      } else if (minPrice) {
+        matchCriteria.$and.push({ price: { $gte: parseFloat(minPrice) } });
+      } else if (maxPrice) {
+        matchCriteria.$and.push({ price: { $lte: parseFloat(maxPrice) } });
+      }
   
       const products = await Product.aggregate([
         { $match: matchCriteria },
@@ -207,7 +223,7 @@ const addProduct = async (req, res) => {
   };
   
   
-  module.exports = { getAllStoreProductByPagination };
+  
   
   module.exports = {
     addProduct,

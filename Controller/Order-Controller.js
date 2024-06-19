@@ -17,7 +17,7 @@ const createOrder = async (req, res) => {
                 phoneNumber,
                 email,
                 cart,
-                status, // Assuming status is coming from req.body but not explicitly used in your example
+                status,
                 price,
                 totalPrice,
                 deliveryCharge,
@@ -112,11 +112,24 @@ const createOrder = async (req, res) => {
                 throw new Error(`Store with ID ${storeID} not found`);
             }
             store.orders.push(savedOrder._id);
+
+            // Update store revenue
+            store.revenueGenerated += totalPrice;
+            const dueAmountIncrease = 0.03 * totalPrice;
+            store.dueAmount += dueAmountIncrease;
+
+            // Check if the order phone number is unique
+            const isUniquePhoneNumber = await Order.countDocuments({ phoneNumber }).session(session) === 1;
+            if (isUniquePhoneNumber) {
+                store.customers += 1;
+            }
+
             await store.save({ session });
 
             console.log(`Order ${savedOrder._id} added to Store ${storeID} orders`);
 
-            // Update stock counts
+            // Update stock counts and sold quantities
+            const productSoldCounts = {};
             await Promise.all(cart.map(async item => {
                 const product = await Product.findById(item.product).session(session);
                 if (!product) {
@@ -126,16 +139,31 @@ const createOrder = async (req, res) => {
                 if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default') {
                     // Default variant scenario
                     product.inventory -= item.count;
+                    product.soldQuantity += item.count;
+                    product.revenueGenerated += item.count * item.price;
                 } else {
                     // Non-default variant scenario
                     const variant = product.variant.find(v => v.name === item.selectedVariant[0].name);
                     const option = variant.options.find(o => o.name === item.selectedVariant[0].options.name);
                     option.count -= item.count;
+                    product.soldQuantity += item.count;
+                    product.revenueGenerated += item.count * option.price;
                 }
 
                 await product.save({ session });
+
+
                 console.log(`Updated inventory for Product ${product._id}`);
+                const mostSoldProduct = await Product.findById(store.mostSoldItem);
+                if (!mostSoldProduct) {
+                    store.mostSoldItem = item.product;
+                } else if (mostSoldProduct && mostSoldProduct.soldQuantity < product.soldQuantity) {
+                    store.mostSoldProduct = item.product
+                }
+                await store.save({ session });
+
             }));
+
 
             // Return the saved order
             res.status(201).json(savedOrder);
@@ -190,7 +218,7 @@ const getOrdersByStore = async (req, res) => {
             });
         }
 
-        // Populate orders with or without search conditions
+        // Populate orders with or without search conditions and sort by _id descending (latest first)
         const store = await Store.findById(storeID)
             .populate({
                 path: 'orders',
@@ -198,6 +226,7 @@ const getOrdersByStore = async (req, res) => {
                 options: {
                     skip,
                     limit,
+                    sort: { _id: -1 }, // Sort by _id descending
                     select: '-deliveryCode', // Exclude deliveryCode
                 },
                 populate: {
@@ -230,8 +259,7 @@ const getOrdersByStore = async (req, res) => {
 
 
 const updateOrder = async (req, res) => {
-    const { orderId } = req.params;
-    const { storeID } = req.params;
+    const { orderId, storeID } = req.params;
     const { status, deliveryCode } = req.body;
 
     const session = await mongoose.startSession();
@@ -257,41 +285,81 @@ const updateOrder = async (req, res) => {
             return res.status(403).json({ message: "Delivered Order can no longer be updated" });
         }
 
-        // If status is "Delivered", check the deliveryCode
-        if (status === 'Delivered') {
-            if (!deliveryCode || deliveryCode !== order.deliveryCode) {
+        // Prepare the update object including deliveryCode if provided
+        const updateData = { status };
+        if (deliveryCode) {
+            updateData.deliveryCode = deliveryCode;
+        }
+
+        // Handle order cancellation scenario
+        if (status === 'Cancelled') {
+            // Update the order status to Cancelled
+            updateData.status = 'Cancelled';
+
+            // Update store metrics
+            const store = await Store.findById(storeID).session(session);
+            if (!store) {
                 await session.abortTransaction();
-                return res.status(400).json({ message: 'Invalid delivery code' });
+                return res.status(404).json({ message: `Store with ID ${storeID} not found` });
             }
 
-            // Update the order status
-            const updatedOrder = await Order.findByIdAndUpdate(
-                orderId,
-                { status },
-                { new: true, session }
-            );
+            // Adjust store revenue and due amount
+            store.revenueGenerated -= order.totalPrice;
+            const dueAmountDecrease = 0.03 * order.totalPrice;
+            store.dueAmount -= dueAmountDecrease;
 
-            // Update store dueAmount only for COD orders within the transaction
-            if (order.paymentMethod === 'CashOnDelivery') {
-                const store = await Store.findById(storeID).session(session);
-                if (!store) {
-                    await session.abortTransaction();
-                    return res.status(404).json({ message: "store not found" });
+            // Check if the order phone number is unique and adjust customer count
+            const isUniquePhoneNumber = await Order.countDocuments({ phoneNumber: order.phoneNumber }).session(session) === 1;
+            if (isUniquePhoneNumber) {
+                store.customers -= 1;
+            }
+
+            await store.save({ session });
+
+            // Update product data (reverse changes made during order creation)
+            await Promise.all(order.cart.map(async item => {
+                const product = await Product.findById(item.product).session(session);
+                if (!product) {
+                    throw new Error(`Product with ID ${item.product} not found`);
                 }
 
-                const dueAmountIncrease = 0.03 * order.totalPrice;
-                store.dueAmount = store.dueAmount + dueAmountIncrease;
-                await store.save({ session });
-            }
+                if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default') {
+                    // Default variant scenario
+                    product.inventory += item.count;
+                    product.soldQuantity -= item.count;
+                    product.revenueGenerated -= item.count * item.price;
+                } else {
+                    // Non-default variant scenario
+                    const variant = product.variant.find(v => v.name === item.selectedVariant[0].name);
+                    const option = variant.options.find(o => o.name === item.selectedVariant[0].options.name);
+                    option.count += item.count;
+                    product.soldQuantity -= item.count;
+                    product.revenueGenerated -= item.count * option.price;
+                }
 
-            await session.commitTransaction();
-            res.json({ message: 'Order updated successfully' });
-        } else {
-            // Update order status for non-delivered cases within the transaction
-            const updatedOrder = await Order.findByIdAndUpdate(orderId, req.body, { new: true, session });
-            await session.commitTransaction();
-            res.json({ message: 'Order updated successfully' });
+                await product.save({ session });
+
+                // Check if this product was the most sold item and update store.mostSoldItem if needed
+                if (store.mostSoldItem && store.mostSoldItem.equals(item.product)) {
+                    const mostSoldProduct = await Product.findById(store.mostSoldItem).session(session);
+                    if (mostSoldProduct && mostSoldProduct.soldQuantity < product.soldQuantity) {
+                        store.mostSoldItem = product._id;
+                    }
+                }
+
+                await store.save({ session });
+            }));
         }
+
+        // Update the order status in the database
+        const updatedOrder = await Order.findByIdAndUpdate(
+            orderId,
+            updateData,
+            { new: true, session }
+        );
+
+        await session.commitTransaction();
+        res.json({ message: 'Order updated successfully', updatedOrder });
     } catch (error) {
         console.error('Error updating order:', error.message);
         await session.abortTransaction();
@@ -300,6 +368,9 @@ const updateOrder = async (req, res) => {
         session.endSession();
     }
 };
+
+
+
 
 
 

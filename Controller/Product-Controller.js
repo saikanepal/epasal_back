@@ -36,7 +36,7 @@ const addProduct = async (req, res) => {
   
       return res.status(200).json({ success: true, message: "Product Added Successfully" });
     } catch (err) {
-      console.error(err);
+      console.log(err);
       return res.status(400).json({ success: false, message: "Error in adding product" });
     }
   };
@@ -67,7 +67,7 @@ const addProduct = async (req, res) => {
       }
       return res.status(200).json({ success: true, message: "Product updated successfully", product });
     } catch (err) {
-      console.error(err);
+      console.log(err);
       return res.status(400).json({ success: false, message: "Error in updating product" });
     }
   };
@@ -114,7 +114,7 @@ const addProduct = async (req, res) => {
   
       return res.status(200).json({ success: true, message: "Product deleted successfully" });
     } catch (err) {
-      console.error(err);
+      console.log(err);
       return res.status(400).json({ success: false, message: "Error in deleting product" });
     }
   };
@@ -129,7 +129,7 @@ const addProduct = async (req, res) => {
       }
       return res.status(200).json({ success: true, products: store.products });
     } catch (err) {
-      console.error(err);
+      console.log(err);
       return res.status(400).json({ success: false, message: "Error in getting products" });
     }
     return res.json("hello")
@@ -145,7 +145,7 @@ const addProduct = async (req, res) => {
       }
       return res.status(200).json({ success: true, product });
     } catch (err) {
-      console.error(err);
+      console.log(err);
       return res.status(400).json({ success: false, message: "Error in getting product" });
     }
     return res.json("hello");
@@ -160,42 +160,71 @@ const addProduct = async (req, res) => {
       }
       return res.status(200).json({ success: true, product });
     } catch (err) {
-      console.error(err);
+      console.log(error);
       return res.status(400).json({ success: false, message: "Error in getting product" });
     }
     return res.json("hello");
   };
   
-  const getAllStoreProductByPagination =async (req, res) => {
+  const getAllStoreProductByPagination = async (req, res) => {
     const { storeId } = req.params;
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, search = '', sortOrder = 'asc', productId, minPrice, maxPrice } = req.query;
   
     try {
-      const store = await Store.findById(storeId).populate({
-        path: 'products',
-        options: {
-          skip: (page - 1) * limit,
-          limit: parseInt(limit),
-        },
-      });
-  
+      const store = await Store.findById(storeId);
       if (!store) {
         return res.status(404).json({ message: 'Store not found' });
       }
   
-      const totalProducts = await Product.countDocuments({ _id: { $in: store.products } });
+      const matchCriteria = {
+        $and: [
+          {
+            $or: [
+              { name: { $regex: search, $options: 'i' } },
+              { description: { $regex: search, $options: 'i' } },
+            ],
+          },
+          { _id: { $in: store.products } }
+        ]
+      };
+  
+      if (productId) {
+        matchCriteria.$and.push({ _id: productId });
+      }
+  
+      if (minPrice && maxPrice) {
+        matchCriteria.$and.push({ price: { $gte: parseFloat(minPrice), $lte: parseFloat(maxPrice) } });
+      } else if (minPrice) {
+        matchCriteria.$and.push({ price: { $gte: parseFloat(minPrice) } });
+      } else if (maxPrice) {
+        matchCriteria.$and.push({ price: { $lte: parseFloat(maxPrice) } });
+      }
+  
+      const products = await Product.aggregate([
+        { $match: matchCriteria },
+        { $sort: { revenueGenerated: sortOrder === 'asc' ? 1 : -1 } },
+        { $skip: (page - 1) * limit },
+        { $limit: parseInt(limit) }
+      ]);
+  
+      const totalProducts = await Product.countDocuments(matchCriteria);
       const totalPages = Math.ceil(totalProducts / limit);
   
       res.status(200).json({
-        products: store.products,
+        products,
         totalProducts,
         totalPages,
         currentPage: parseInt(page),
       });
     } catch (error) {
+      console.log(error);
       res.status(500).json({ message: 'Error fetching store products', error });
     }
   };
+  
+  
+  
+  
   module.exports = {
     addProduct,
     updateProduct,

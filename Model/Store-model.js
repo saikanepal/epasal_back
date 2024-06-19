@@ -56,9 +56,11 @@ const storeSchema = new mongoose.Schema({
     revenueGenerated: { type: Number, default: 0 },
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
     customers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
-    dueAmount: { type: Number, default: 0, index: true },// * filter ascending or desceding 
-    pendingAmount: { type: Number, default: 0, index: true },// * filter ascending or descending
-    mostSoldItem: { type: Number },
+
+    dueAmount: { type: Number, default: 0 },
+    pendingAmount: { type: Number, default: 0 },
+    mostSoldItem: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+
     visitors: { type: Number, default: 0 }, // todo : Restrict (react-cookie check?) = > rate limiter express?
     conversitionRate: { type: Number, default: 0 },  // order / visitors * 100 %
 

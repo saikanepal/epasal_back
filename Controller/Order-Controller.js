@@ -230,10 +230,10 @@ const getOrdersByStore = async (req, res) => {
 
 
 const updateOrder = async (req, res) => {
-    const { orderId } = req.params;
-    const { storeID } = req.params;
+    const { orderId, storeID } = req.params;
     const { status, deliveryCode } = req.body;
-
+    console.log(req.params);
+    console.log(req.body);
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -259,39 +259,42 @@ const updateOrder = async (req, res) => {
 
         // If status is "Delivered", check the deliveryCode
         if (status === 'Delivered') {
-            if (!deliveryCode || deliveryCode !== order.deliveryCode) {
+            console.log(order);
+            if (!deliveryCode || deliveryCode.toLowerCase() !== order.deliveryCode.toLowerCase()) {
                 await session.abortTransaction();
                 return res.status(400).json({ message: 'Invalid delivery code' });
             }
+        }
 
-            // Update the order status
-            const updatedOrder = await Order.findByIdAndUpdate(
-                orderId,
-                { status },
-                { new: true, session }
-            );
+        // Prepare the update object excluding deliveryCode unless explicitly provided
+        const updateData = { status };
+        if (deliveryCode) {
+            updateData.deliveryCode = deliveryCode;
+        }
 
-            // Update store dueAmount only for COD orders within the transaction
-            if (order.paymentMethod === 'CashOnDelivery') {
-                const store = await Store.findById(storeID).session(session);
-                if (!store) {
-                    await session.abortTransaction();
-                    return res.status(404).json({ message: "store not found" });
-                }
+        // Update the order status
+        const updatedOrder = await Order.findByIdAndUpdate(
+            orderId,
+            updateData,
+            { new: true, session }
+        );
 
-                const dueAmountIncrease = 0.03 * order.totalPrice;
-                store.dueAmount = store.dueAmount + dueAmountIncrease;
-                await store.save({ session });
+        // Update store dueAmount only for COD orders within the transaction
+        if (order.paymentMethod === 'CashOnDelivery' && status === 'Delivered') {
+            const store = await Store.findById(storeID).session(session);
+            if (!store) {
+                await session.abortTransaction();
+                return res.status(404).json({ message: "Store not found" });
             }
 
-            await session.commitTransaction();
-            res.json({ message: 'Order updated successfully' });
-        } else {
-            // Update order status for non-delivered cases within the transaction
-            const updatedOrder = await Order.findByIdAndUpdate(orderId, req.body, { new: true, session });
-            await session.commitTransaction();
-            res.json({ message: 'Order updated successfully' });
+            const dueAmountIncrease = 0.03 * order.totalPrice;
+            store.dueAmount += dueAmountIncrease;
+            store.revenueGenerated += order.totalPrice-dueAmountIncrease;
+            await store.save({ session });
         }
+
+        await session.commitTransaction();
+        res.json({ message: 'Order updated successfully', updatedOrder });
     } catch (error) {
         console.error('Error updating order:', error.message);
         await session.abortTransaction();

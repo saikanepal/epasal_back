@@ -29,7 +29,7 @@ const createStore = async (req, res) => {
         fonts,
         featuredProducts,
     } = req.body.store;
-    console.log(req.body.store, "store")
+    // console.log(req.body.store, "store")
     try {
         // Create products if products data is provided
         const dataExists = await Store.findOne({ name })
@@ -157,7 +157,6 @@ const getStoreByName = async (req, res) => {
     try {
         // Retrieve store with all products and staff based on storeName
         const store = await Store.findOne({ name: req.params.storeName })
-            .populate('products')
             .populate('staff');
 
         if (!store) {

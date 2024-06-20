@@ -31,18 +31,19 @@ const productSchema = new mongoose.Schema({
     //     imageUrl: { type: String }
     // },
     rating: {
-        type: Number
+        type: Number,
+        default: 0
     },
 
     variant: [{
         name: {
             type: String,
-            default:'default'
+            default: 'default'
         },
         options: [{
             name: {
                 type: String,
-                default:'true'
+                default: 'true'
             },
             price: {
                 type: Number,

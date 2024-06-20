@@ -196,7 +196,7 @@ const addEmployee = async (req, res) => {
         if (!validRoles.includes(newRole)) {
             throw { status: 400, message: 'Invalid role' };
         }
-
+        
         // Check if the user already has a role for the specified store
         const existingRole = user.roles.find(role => role.storeId.toString() === storeId);
         if (existingRole) {
@@ -206,11 +206,13 @@ const addEmployee = async (req, res) => {
         // Add a new role entry
         user.roles.push({ storeId, role: newRole });
 
-        // Save the user with the new role
-        await user.save();
+       
 
         // Add user ID to the store's staff array 
         store.staff.push(user._id);
+
+         // Save the user with the new role
+        await user.save();
         await store.save();
 
         res.status(200).json({ message: 'Employee role added successfully' });

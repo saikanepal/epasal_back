@@ -62,6 +62,8 @@ const addProduct = async (req, res) => {
           }
         }
       }
+
+      
       const product = await Product.findByIdAndUpdate(id, updates, { new: true });
       if (!product) {
         return res.status(404).json({ success: false, message: "Product not found" });

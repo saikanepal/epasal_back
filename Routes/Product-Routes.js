@@ -9,7 +9,7 @@ router.get('/getAllProduct/:storeId', productController.getAllStoreProductByPagi
 router.put('/updateProduct',productController.updateProduct);
 router.post('/addProduct', addProduct)
 router.post('/deleteProduct', DeleteProduct)
-router.post("/getProductByName", productController.getProductByName)
+// router.post("/getProductByName", productController.getProductByName)
 
 
 module.exports = router;

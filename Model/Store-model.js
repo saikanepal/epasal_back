@@ -48,7 +48,9 @@ const storeSchema = new mongoose.Schema({
     footerDescription: { type: String },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     staff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-    subscriptionStatus: { type: String, default: 'Silver' },
+    subscriptionStatus: { type: String,
+        enum:['Silver','Gold','Platinum']
+        ,default: 'Silver' },
     activeTheme: { type: Number, default: 1 },
     componentTheme: { type: Object },
     secondaryBannerText: {

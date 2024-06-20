@@ -139,38 +139,70 @@ const createStore = async (req, res) => {
 
 const getStore = async (req, res) => {
     try {
-        // Retrieve store with all products, case-insensitive search
-        const store = await Store.findOne({ name: { $regex: new RegExp('^' + req.params.storeName + '$', 'i') } })
-            .populate('products');
+        // Retrieve store based on case-insensitive search by store name
+        const store = await Store.findOne({ name: { $regex: new RegExp('^' + req.params.storeName + '$', 'i') } });
 
-        console.log(store, "store");
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
+
+        // Define product limits based on subscription status
+        const productLimits = {
+            Silver: 30,
+            Gold: 1000,
+            Platinum: 10000,
+        };
+
+        // Determine the limit based on the store's subscription status
+        const limit = productLimits[store.subscriptionStatus] || 0;
+
+        // Populate products with a limit
+        await store.populate({
+            path: 'products',
+            options: { limit: limit }
+        }).execPopulate();
+
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
         console.error('Error retrieving store:', error);
         res.status(500).json({ message: 'Failed to retrieve store' });
     }
 };
-
 
 const getStoreByName = async (req, res) => {
     try {
         // Retrieve store with all products and staff based on storeName
         const storeName = req.params.storeName.trim();
-        const store = await Store.findOne({ name: { $regex: new RegExp(`^${storeName}$`, 'i') } })
-            .populate('staff');
+        const store = await Store.findOne({ name: { $regex: new RegExp(`^${storeName}$`, 'i') } });
 
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
+
+        // Define staff limits based on subscription status
+        const staffLimits = {
+            Silver: 2,
+            Gold: 5,
+            Platinum: 10,
+        };
+
+        // Determine the limit based on the store's subscription status
+        const limit = staffLimits[store.subscriptionStatus] || 0;
+
+        // Populate staff with a limit
+        await store.populate({
+            path: 'staff',
+            options: { limit: limit }
+        });
+
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
         console.error('Error retrieving store:', error);
         res.status(500).json({ message: 'Failed to retrieve store' });
     }
 };
+
+
 
 const getActiveTheme = async (req, res) => {
     try {

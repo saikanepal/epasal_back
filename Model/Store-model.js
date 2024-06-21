@@ -4,7 +4,7 @@ const Product = require('./Product-model');
 
 
 const storeSchema = new mongoose.Schema({
-    name: { type: String, required: true },
+    name: { type: String, required: true, index: true },
     logo: {
         logoUrl: {
             type: String
@@ -51,8 +51,8 @@ const storeSchema = new mongoose.Schema({
         linkedin: { type: String }
     },
     //order and analytics
-    revenueGenerated: { type: Number , default :0},
-    orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    revenueGenerated: { type: Number, default: 0 },
+    orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order', index: true }],
     customers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
     dueAmount: { type: Number, default: 0 },
     pendingAmount: { type: Number, default: 0 },
@@ -82,8 +82,8 @@ const storeSchema = new mongoose.Schema({
     // }],
     // 
     footerDescription: { type: String },
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Reference to User model for admin
-    staff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Array of references to User model for staff
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // Reference to User model for admin
+    staff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }], // Array of references to User model for staff
     subscriptionStatus: { type: String, default: 'Silver' },// Subscription status field with default value 'Active'
     activeTheme: { type: Number, default: '1' },
     componentTheme: { type: Object },  //Navbar : 1 

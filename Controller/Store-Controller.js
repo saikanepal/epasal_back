@@ -270,243 +270,119 @@ const deleteStore = async (req, res) => {
 };
 
 
-const getStoreByFilterV0 = async (req, res) => {
-    try {
-        let keyword = {};
 
-        // Keyword search for _id, owner, email, name, phoneNumber, address
-        if (req.query.search) {
-            if (mongoose.Types.ObjectId.isValid(req.query.search)) {
-                keyword.$or = [
-                    { _id: req.query.search },
-                    { owner: req.query.search }
-                ];
-            } else {
-                keyword.$or = [
-                    { email: { $regex: req.query.search, $options: "i" } },
-                    { name: { $regex: req.query.search, $options: "i" } },
-                    { phoneNumber: { $regex: req.query.search, $options: "i" } },
-                    { address: { $regex: req.query.search, $options: "i" } },
-                ];
-            }
-        }
 
-        // Numerical filters
-        if (req.query.dueAmount) {
-            keyword.dueAmount = Number(req.query.dueAmount);
-        }
-        if (req.query.pendingAmount) {
-            keyword.pendingAmount = Number(req.query.pendingAmount);
-        }
-        if (req.query.revenueGenerated) {
-            keyword.revenueGenerated = Number(req.query.revenueGenerated);
-        }
 
-        // Handle ranges for numerical fields if necessary
-        const parseRangeQuery = (query) => {
-            if (!query) return;
-            const range = {};
-            if (query.min) range.$gte = Number(query.min);
-            if (query.max) range.$lte = Number(query.max);
-            return range;
-        };
-
-        const dueAmountRange = parseRangeQuery(req.query.dueAmountRange);
-        if (dueAmountRange) {
-            keyword.dueAmount = dueAmountRange;
-        }
-
-        const pendingAmountRange = parseRangeQuery(req.query.pendingAmountRange);
-        if (pendingAmountRange) {
-            keyword.pendingAmount = pendingAmountRange;
-        }
-
-        const revenueGeneratedRange = parseRangeQuery(req.query.revenueGeneratedRange);
-        if (revenueGeneratedRange) {
-            keyword.revenueGenerated = revenueGeneratedRange;
-        }
-
-        const stores = await Store.find(keyword, { password: 0, __v: 0 });
-        return res.json({
-            stores: stores,
-        });
-    } catch (error) {
-        console.error('Error fetching stores:', error.message);
-        res.status(500).json({ message: 'Fetching stores failed, please try again later.', error: error.message });
-    }
-};
-
-const getStoreByFilterV1 = async (req, res) => {
-    try {
-        let keyword = {};
-
-        // Keyword search for _id, owner, email, name, phoneNumber, address
-        if (req.query.search) {
-            if (mongoose.Types.ObjectId.isValid(req.query.search)) {
-                keyword.$or = [
-                    { _id: req.query.search },
-                    { owner: req.query.search }
-                ];
-            } else {
-                keyword.$or = [
-                    { email: { $regex: req.query.search, $options: "i" } },
-                    { location: { $regex: req.query.search, $options: "i" } },
-                    { name: { $regex: req.query.search, $options: "i" } },
-                    { phoneNumber: { $regex: req.query.search, $options: "i" } },
-                    { address: { $regex: req.query.search, $options: "i" } },
-                ];
-            }
-        }
-
-        // Numerical filters
-        if (req.query.dueAmount) {
-            keyword.dueAmount = Number(req.query.dueAmount);
-        }
-        if (req.query.pendingAmount) {
-            keyword.pendingAmount = Number(req.query.pendingAmount);
-        }
-        if (req.query.revenueGenerated) {
-            keyword.revenueGenerated = Number(req.query.revenueGenerated);
-        }
-
-        // Handle ranges for numerical fields if necessary
-        const parseRangeQuery = (query) => {
-            if (!query) return;
-            const range = {};
-            if (query.min) range.$gte = Number(query.min);
-            if (query.max) range.$lte = Number(query.max);
-            return range;
-        };
-
-        const dueAmountRange = parseRangeQuery(req.query.dueAmountRange);
-        if (dueAmountRange) {
-            keyword.dueAmount = dueAmountRange;
-        }
-
-        const pendingAmountRange = parseRangeQuery(req.query.pendingAmountRange);
-        if (pendingAmountRange) {
-            keyword.pendingAmount = pendingAmountRange;
-        }
-
-        const revenueGeneratedRange = parseRangeQuery(req.query.revenueGeneratedRange);
-        if (revenueGeneratedRange) {
-            keyword.revenueGenerated = revenueGeneratedRange;
-        }
-
-        // Pagination
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
-
-        const stores = await Store.find(keyword, { __v: 0 })
-            .skip(skip)
-            .limit(limit);
-
-        return res.json({
-            stores: stores,
-            page: page,
-            limit: limit,
-            hasNextPage: stores.length === limit
-        });
-    } catch (error) {
-        console.error('Error fetching stores:', error.message);
-        res.status(500).json({ message: 'Fetching stores failed, please try again later.', error: error.message });
-    }
-};
 
 const getStoreByFilter = async (req, res) => {
     try {
-        let keyword = {};
+        const searchTerms = req.query.search ? req.query.search.split(',').map(term => term.trim()).filter(Boolean) : [];
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const ownername = req.query.ownername ? req.query.ownername.trim() : '';
+        const staffname = req.query.staffname ? req.query.staffname.trim() : '';
 
-        // Keyword search for _id, owner, staff, email, name, phoneNumber, address
-        if (req.query.search) {
-            if (mongoose.Types.ObjectId.isValid(req.query.search)) {
-                keyword.$or = [
-                    { _id: req.query.search },
-                    { owner: req.query.search },
-                    { staff: req.query.search }
+        let searchConditions = [];
+        console.log({ searchTerms });
+
+        // Only add search conditions if search terms are provided
+        if (searchTerms.length > 0) {
+            searchTerms.forEach(term => {
+                const termConditions = [
+                    { name: { $regex: term, $options: 'i' } },
+                    { address: { $regex: term, $options: 'i' } },
+                    { email: { $regex: term, $options: 'i' } },
+                    { phoneNumber: { $regex: term, $options: 'i' } },
+                    // Add more fields as needed
                 ];
+
+                if (mongoose.Types.ObjectId.isValid(term)) {
+                    termConditions.push({ _id: term });
+                    termConditions.push({ owner: term });
+                }
+
+                searchConditions.push({ $or: termConditions });
+            });
+        }
+
+        // Add ownername to search conditions if provided
+        if (ownername) {
+            // Find owner IDs by owner name
+            const ownerQuery = { name: { $regex: ownername, $options: 'i' } };
+            const owners = await User.find(ownerQuery).select('_id').lean();
+            const ownerIds = owners.map(owner => owner._id);
+
+            if (ownerIds.length > 0) {
+                searchConditions.push({ owner: { $in: ownerIds } });
             } else {
-                keyword.$or = [
-                    { email: { $regex: req.query.search, $options: "i" } },
-                    { name: { $regex: req.query.search, $options: "i" } },
-                    { location: { $regex: req.query.search, $options: "i" } },
-                    { phoneNumber: { $regex: req.query.search, $options: "i" } },
-                    { address: { $regex: req.query.search, $options: "i" } },
-                ];
+                // If no owners match the provided ownername, return empty result
+                return res.json({ ok: true, stores: [], page, limit, totalCount: 0, hasNextPage: false });
             }
         }
 
-        // Numerical filters
-        if (req.query.dueAmount) {
-            keyword.dueAmount = Number(req.query.dueAmount);
-        }
-        if (req.query.pendingAmount) {
-            keyword.pendingAmount = Number(req.query.pendingAmount);
-        }
-        if (req.query.revenueGenerated) {
-            keyword.revenueGenerated = Number(req.query.revenueGenerated);
-        }
+        // Add staffname to search conditions if provided
+        if (staffname) {
+            // Find staff IDs by staff name
+            const staffQuery = { name: { $regex: staffname, $options: 'i' } };
+            const staffMembers = await User.find(staffQuery).select('_id').lean();
+            const staffIds = staffMembers.map(staff => staff._id);
 
-        // Handle ranges for numerical fields if necessary
-        const parseRangeQuery = (query) => {
-            if (!query) return;
-            const range = {};
-            if (query.min) range.$gte = Number(query.min);
-            if (query.max) range.$lte = Number(query.max);
-            return range;
-        };
-
-        const dueAmountRange = parseRangeQuery(req.query.dueAmountRange);
-        if (dueAmountRange) {
-            keyword.dueAmount = dueAmountRange;
+            if (staffIds.length > 0) {
+                searchConditions.push({ staff: { $in: staffIds } });
+            } else {
+                // If no staff match the provided staffname, return empty result
+                return res.json({ ok: true, stores: [], page, limit, totalCount: 0, hasNextPage: false });
+            }
         }
 
-        const pendingAmountRange = parseRangeQuery(req.query.pendingAmountRange);
-        if (pendingAmountRange) {
-            keyword.pendingAmount = pendingAmountRange;
-        }
+        // Construct the query
+        const query = searchConditions.length > 0 ? { $and: searchConditions } : {};
+        console.log(query);
 
-        const revenueGeneratedRange = parseRangeQuery(req.query.revenueGeneratedRange);
-        if (revenueGeneratedRange) {
-            keyword.revenueGenerated = revenueGeneratedRange;
-        }
+        // Count total number of matching stores
+        const totalCount = await Store.countDocuments(query);
 
-        // Pagination
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
+        // Query the database with pagination
+        const stores = await Store.find(query, {
+            name: 1,
+            _id: 1,
+            staff: 1,
+            email: 1,
+            phoneNumber: 1,
+            location: 1,
+            dueAmount: 1,
+            pendingAmount: 1,
+            revenueGenerated: 1,
+            owner: 1,
+        })
+            .populate('staff', 'name') // Populate the staff field with User documents, selecting only the name field
+            .populate('owner', 'name') // Populate the owner field with User documents, selecting only the name field
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .exec();
 
-        // Keyset pagination with lastId
-        if (req.query.lastId) {
-            keyword._id = { $gt: req.query.lastId };
-        }
-
-        const stores = await Store.find(keyword, { 
-                name: 1, 
-                _id: 1, 
-                staff: 1, 
-                email: 1, 
-                phoneNumber: 1, 
-                location: 1, 
-                dueAmount: 1, 
-                pendingAmount: 1, 
-                revenueGenerated: 1 
-            })
-            .skip(skip)
-            .limit(limit);
-
+        // Return the results with pagination info
         return res.json({
-            stores: stores,
-            page: page,
-            limit: limit,
-            hasNextPage: stores.length === limit
+            ok: true,
+            stores,
+            page,
+            limit,
+            totalCount,
+            hasNextPage: (page * limit) < totalCount
         });
     } catch (error) {
-        console.error('Error fetching stores:', error.message);
-        res.status(500).json({ message: 'Fetching stores failed, please try again later.', error: error.message });
+        console.error('Error in getStoreByFilter:', error);
+        return res.status(500).json({ ok: false, error: error.message });
     }
 };
+
+
+
+
+module.exports = {
+    getStoreByFilter
+};
+
 
 module.exports = {
     createStore,

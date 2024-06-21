@@ -12,7 +12,8 @@ const orderSchema = new mongoose.Schema({
     status: {
         type: String,
         enum: ['Processing', 'Confirmed', 'Being delivered', 'Delivered', 'Cancelled', 'Returned'],
-        default: 'Processing'
+        default: 'Processing',
+        index: true
     },
 
     // Product details

@@ -4,7 +4,8 @@ const Store = require('./Store-model');
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: true
+        required: true,
+        index:true
     },
     email: {
         type: String,

@@ -3,6 +3,7 @@ const { addProduct, DeleteProduct, getAllProductData } = require('../Controller/
 const router = express.Router();
 const productController = require('../Controller/Product-Controller')
 router.get('/getAllStoreProduct/:storeId', productController.getAllProductData)
+router.get("/getStoreProducts/:storeName",productController.getStoreProducts)
 
 router.get('/getAllProduct/:storeId', productController.getAllStoreProductByPagination);
 

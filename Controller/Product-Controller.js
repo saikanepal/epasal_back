@@ -12,7 +12,8 @@ cloudinary.config({
 
 
 const addProduct = async (req, res) => {
-  const { name, description, image, category, price, variant, inventory, storeId, subcategories } = req.body.formState;
+  const { name, description, image, category, price, variant, inventory, subcategories } = req.body.formState;
+  const {storeId} = req.body;
   try {
       // Define product limits based on subscription status
       const productLimits = {
@@ -95,7 +96,6 @@ const addProduct = async (req, res) => {
   const DeleteProduct = async (req, res) => {
     const { id,storeId } = req.body;
     try {
-      console.log(req.body,"aindoa")
       const product = await Product.findById(id);
       if (!product) {
         return res.status(404).json({ success: false, message: "Product not found" });

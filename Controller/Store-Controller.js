@@ -39,10 +39,15 @@ const createStore = async (req, res) => {
             return res.status(400).json({ message: "Store already exists" });
         }
         let savedProducts = [];
-
+        let count=1;
+        
         if (products && products.length > 0) {
             // Iterate through products and create them
             for (const productData of products) {
+                if(count>30){
+                    break;
+                }
+                count++;
                 const {
                     name,
                     description,
@@ -139,6 +144,8 @@ const createStore = async (req, res) => {
 
 const getStore = async (req, res) => {
     try {
+        const storeName = req.params.storeName.trim();
+        console.log(storeName,"store name")
         // Retrieve store based on case-insensitive search by store name
         const store = await Store.findOne({ name: { $regex: new RegExp('^' + req.params.storeName + '$', 'i') } });
 
@@ -160,7 +167,7 @@ const getStore = async (req, res) => {
         await store.populate({
             path: 'products',
             options: { limit: limit }
-        }).execPopulate();
+        })
 
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
@@ -172,7 +179,9 @@ const getStore = async (req, res) => {
 const getStoreByName = async (req, res) => {
     try {
         // Retrieve store with all products and staff based on storeName
-        const storeName = req.params.storeName.trim();
+        // const storeName = req.params.storeName.replace(' ','');
+        const storeName = req.params.storeName.replace(" ","");
+        console.log(storeName,"store name")
         const store = await Store.findOne({ name: { $regex: new RegExp(`^${storeName}$`, 'i') } });
 
         if (!store) {
@@ -327,7 +336,19 @@ const updateDashboardStore = async (req, res) => {
             console.log("Deleting old Khalti image:", oldStore.khalti.qr.imageID);
             await cloudinary.uploader.destroy(oldStore.khalti.qr.imageID);
         }
+        const promoCodeLimit = {
+            Silver: 0,
+            Gold: 1,
+            Platinum: 2,
+        };
+        const myPromoLimit=promoCodeLimit[oldStore.subscriptionStatus]
+        if(newData?.promoCode && oldStore.promoCode.length<myPromoLimit){
+                
+                //Promo Code logic to implement
 
+
+
+        }
         // Find the store by ID and update it with the new data
         const updatedStore = await Store.findByIdAndUpdate(
             storeID,

@@ -12,7 +12,7 @@ cloudinary.config({
 
 
 const addProduct = async (req, res) => {
-  const { name, description, image, category, price, variant, inventory, storeId, subcategories } = req.body.formState;
+  const { name, description, image, category, price, variant, inventory, subcategories } = req.body.formState;
   try {
       // Define product limits based on subscription status
       const productLimits = {
@@ -20,15 +20,15 @@ const addProduct = async (req, res) => {
           Gold: 1000,
           Platinum: 10000,
       };
-
+  
       // Fetch the store using storeId
-      const store = await Store.findById(storeId);
+      const store = await Store.findById(req.body.storeID);
       if (!store) {
           return res.status(404).json({ success: false, message: "Store not found" });
       }
 
       // Determine the limit based on the store's subscription status
-      const limit = productLimits[store.subscriptionStatus] || 0;
+      const limit = productLimits[store.subscriptionStatus] || 30;
 
       // Check the current number of products
       if (store.products.length >= limit) {
@@ -150,13 +150,13 @@ const addProduct = async (req, res) => {
 
         // Define product limits based on subscription status
         const productLimits = {
-            Silver: 30,
+            Silver: 2,
             Gold: 1000,
             Platinum: 10000,
         };
 
         // Determine the limit based on the store's subscription status
-        const limit = productLimits[store.subscriptionStatus] || 0;
+        const limit = productLimits[store.subscriptionStatus] || 2;
 
         // Populate products with a limit
         await store.populate({
@@ -238,9 +238,9 @@ const addProduct = async (req, res) => {
   
       // Define product limits based on subscription status
       const productLimits = {
-        Silver: 5,
-        Gold: 10,
-        Platinum: 20,
+        Silver: 30,
+        Gold: 1000,
+        Platinum: 10000,
       };
   
       // Determine the limit based on the store's subscription status

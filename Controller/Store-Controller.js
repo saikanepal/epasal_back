@@ -2,7 +2,7 @@ const Store = require('../Model/Store-model'); // Import the Store model
 const Product = require('../Model/Product-model'); // Import the Product model
 const User = require('../Model/User-model'); // Import the User model|
 const cloudinary = require("cloudinary").v2;
-
+const esewaTransaction = require('../Model/Esewa-model');
 
 const createStore = async (req, res) => {
 
@@ -345,6 +345,46 @@ const updateDashboardStore = async (req, res) => {
     }
 };
 
+const updateSubscription = async (req, res) => {
+    console.log("here");
+    const { transactionID } = req.params;
+    console.log(req.params);
+    console.log(transactionID);
+    try {
+        // Fetch the transaction data to check for existing details
+        const savedTransaction = await esewaTransaction.findById(transactionID);
+        if (!savedTransaction) {
+            return res.status(404).json({ message: 'Transaction not found' });
+        }
+        console.log(savedTransaction);
+        // Populate the store and select only the subscriptionStatus field
+        await savedTransaction.populate({
+            path: 'store',
+            select: 'subscriptionStatus'
+        })
+
+        const store = savedTransaction.store;
+        if (!store) {
+            return res.status(404).json({ message: 'Store not found' });
+        }
+
+        // Update the store's subscription status
+        store.subscriptionStatus = savedTransaction.subscription;
+
+        // Save the updated store data
+        const updatedStore = await store.save();
+
+        // Return the updated store data
+        return res.status(200).json({ updatedStore, message: 'Update successful' });
+    } catch (error) {
+        // Handle any errors that occurred during the update process
+        console.error('Error updating store:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
+
+
+
 
 module.exports = {
     createStore,
@@ -353,5 +393,6 @@ module.exports = {
     updateStore,
     deleteStore,
     getStoreByName,
-    updateDashboardStore
+    updateDashboardStore,
+    updateSubscription
 };

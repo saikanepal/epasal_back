@@ -9,7 +9,7 @@ const checkRole = require('../MiddleWare/checkRole');
 
 
 //authentication middleware
-router.use(checkAuth);  
+// router.use(checkAuth);  
 
 router.post('/create', storeController.createStore);
 
@@ -20,6 +20,7 @@ router.get('/getactiveTheme/:storeID', storeController.getActiveTheme);
 
 router.patch('/update/:id', storeController.updateStore);
 router.put('/update/dashboard/:storeID', storeController.updateDashboardStore);
+router.patch('/upgrade/storeSubscription/:transactionID', storeController.updateSubscription);
 
 //store delete
 router.put('/delete/:storeId', checkRole('owner'), storeController.deleteStore);

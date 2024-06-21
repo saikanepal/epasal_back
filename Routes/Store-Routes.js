@@ -19,8 +19,9 @@ router.get('/getStore/:storeName', storeController.getStoreByName);
 router.get('/getactiveTheme/:storeID', storeController.getActiveTheme);
 
 router.patch('/update/:id', storeController.updateStore);
+router.put('/update/dashboard/:storeID', storeController.updateDashboardStore);
 
 //store delete
-router.put('/delete/:storeId', checkAuth, checkRole('owner'), storeController.deleteStore);
+router.put('/delete/:storeId', checkRole('owner'), storeController.deleteStore);
 // Export the router
 module.exports = router; 

@@ -1,11 +1,11 @@
 const Store = require('../Model/Store-model'); // Import the Store model
 const Product = require('../Model/Product-model'); // Import the Product model
 const User = require('../Model/User-model'); // Import the User model|
+const cloudinary = require("cloudinary").v2;
 
 
 const createStore = async (req, res) => {
 
-    console.log(req.body, "req body")
     const {
         name,
         logo,
@@ -29,13 +29,11 @@ const createStore = async (req, res) => {
         fonts,
         featuredProducts,
     } = req.body.store;
-    console.log(req.body.store, "store")
     try {
         // Create products if products data is provided
-        const dataExists = await Store.findOne({ name })
-        console.log(dataExists)
+        const dataExists = await Store.findOne({ name: new RegExp(`^${name.trim()}$`, 'i') });
         if (dataExists) {
-            return res.status(400).json({ message: "Store already exists" })
+            return res.status(400).json({ message: "Store already exists" });
         }
         let savedProducts = [];
 
@@ -138,37 +136,70 @@ const createStore = async (req, res) => {
 
 const getStore = async (req, res) => {
     try {
-        // Retrieve store with all products
-        const store = await Store.findOne({ name: req.params.storeName })
-            .populate('products')
-
-        console.log(store, "store")
+        // Retrieve store based on case-insensitive search by store name
+        const store = await Store.findOne({ name: { $regex: new RegExp('^' + req.params.storeName + '$', 'i') } });
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
+
+        // Define product limits based on subscription status
+        const productLimits = {
+            Silver: 30,
+            Gold: 1000,
+            Platinum: 10000,
+        };
+
+        // Determine the limit based on the store's subscription status
+        const limit = productLimits[store.subscriptionStatus] || 0;
+
+        // Populate products with a limit
+        await store.populate({
+            path: 'products',
+            options: { limit: limit }
+        })
+
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
         console.error('Error retrieving store:', error);
         res.status(500).json({ message: 'Failed to retrieve store' });
     }
 };
+
 
 const getStoreByName = async (req, res) => {
     try {
         // Retrieve store with all products and staff based on storeName
-        const store = await Store.findOne({ name: req.params.storeName })
-            .populate('products')
-            .populate('staff');
+        const storeName = req.params.storeName.trim();
+        const store = await Store.findOne({ name: { $regex: new RegExp(`^${storeName}$`, 'i') } }).populate('owner');
 
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
+
+        // Define staff limits based on subscription status
+        const staffLimits = {
+            Silver: 2,
+            Gold: 5,
+            Platinum: 10,
+        };
+
+        // Determine the limit based on the store's subscription status
+        const limit = staffLimits[store.subscriptionStatus] || 0;
+
+        // Populate staff with a limit
+        await store.populate({
+            path: 'staff',
+            options: { limit: limit }
+        });
+
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
         console.error('Error retrieving store:', error);
         res.status(500).json({ message: 'Failed to retrieve store' });
     }
 };
+
+
 
 const getActiveTheme = async (req, res) => {
     try {
@@ -195,7 +226,6 @@ const updateStore = async (req, res) => {
     // Remove the products field from the updateData if it exists // products are being handled respectively 
     // TODO Delete image left 
     delete updateData.products;
-    console.log(req.body.store, "my body")
     try {
         // Find the store by ID and update it with the new data
         const updatedStore = await Store.findByIdAndUpdate(id, updateData, {
@@ -270,11 +300,58 @@ const deleteStore = async (req, res) => {
 };
 
 
+const updateDashboardStore = async (req, res) => {
+    const { storeID } = req.params;
+    const newData = req.body;
+
+    try {
+        // Fetch the old store data to check for existing images
+        const oldStore = await Store.findById(storeID);
+
+        // Check and delete old images if they exist and are being updated
+        if (oldStore.esewa && oldStore.esewa.qr && oldStore.esewa.qr.imageUrl && oldStore.esewa.qr.imageUrl !== newData?.esewa?.qr?.imageUrl) {
+            console.log("Deleting old eSewa image:", oldStore.esewa.qr.imageID);
+            await cloudinary.uploader.destroy(oldStore.esewa.qr.imageID);
+        }
+
+        if (oldStore.bank && oldStore.bank.qr && oldStore.bank.qr.imageUrl && oldStore.bank.qr.imageUrl !== newData?.bank?.qr?.imageUrl) {
+            console.log("Deleting old Bank image:", oldStore.bank.qr.imageID);
+            await cloudinary.uploader.destroy(oldStore.bank.qr.imageID);
+        }
+
+        if (oldStore.khalti && oldStore.khalti.qr && oldStore.khalti.qr.imageUrl && oldStore.khalti.qr.imageUrl !== newData?.khalti?.qr?.imageUrl) {
+            console.log("Deleting old Khalti image:", oldStore.khalti.qr.imageID);
+            await cloudinary.uploader.destroy(oldStore.khalti.qr.imageID);
+        }
+
+        // Find the store by ID and update it with the new data
+        const updatedStore = await Store.findByIdAndUpdate(
+            storeID,
+            { $set: newData },
+            { new: true, runValidators: true }
+        );
+
+        // Check if the store was found and updated
+        if (!updatedStore) {
+            return res.status(404).json({ message: 'Store not found' });
+        }
+
+        // Return the updated store data
+        return res.status(200).json({ updatedStore, message: 'Update successful' });
+    } catch (error) {
+        // Handle any errors that occurred during the update process
+        console.error('Error updating store:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
+
+
 module.exports = {
     createStore,
     getStore,
     getActiveTheme,
     updateStore,
     deleteStore,
-    getStoreByName
+    getStoreByName,
+    updateDashboardStore
 };

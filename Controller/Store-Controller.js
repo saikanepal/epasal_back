@@ -310,7 +310,7 @@ const deleteStore = async (req, res) => {
 const updateDashboardStore = async (req, res) => {
     const { storeID } = req.params;
     const newData = req.body;
-
+    let promoCodeFlag=false;
     try {
         // Fetch the old store data to check for existing images
         const oldStore = await Store.findById(storeID);
@@ -333,15 +333,21 @@ const updateDashboardStore = async (req, res) => {
         const promoCodeLimit = {
             Silver: 0,
             Gold: 1,
-            Platinum: 2,
+            Platinum: 1,
         };
         const myPromoLimit=promoCodeLimit[oldStore.subscriptionStatus]
-        if(newData?.promoCode && oldStore.promoCode.length<myPromoLimit){
-                
-                //Promo Code logic to implement
-
-
-
+        if(newData?.promoCode && newData.promoCode.length>myPromoLimit){      
+                delete newData.promoCode;
+                promoCodeFlag=true
+        }
+        const LiveChatAvailable = {
+            Silver: 0,
+            Gold: 1,
+            Platinum: 1,
+        };
+        const myLiveChatAvailable=LiveChatAvailable[oldStore.subscriptionStatus]
+        if(myLiveChatAvailable===0){      
+            delete newData.liveChatSource;
         }
         // Find the store by ID and update it with the new data
         const updatedStore = await Store.findByIdAndUpdate(
@@ -356,6 +362,9 @@ const updateDashboardStore = async (req, res) => {
         }
 
         // Return the updated store data
+        if(promoCodeFlag){
+            return res.status(200).json({ updatedStore, message: 'Update successful promoCode deleted Promo Inventory Cap' });
+        }
         return res.status(200).json({ updatedStore, message: 'Update successful' });
     } catch (error) {
         // Handle any errors that occurred during the update process

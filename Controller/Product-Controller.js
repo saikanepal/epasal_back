@@ -300,7 +300,23 @@ const addProduct = async (req, res) => {
   };
   
   
-  
+  const getStoreProducts= async (req, res) => {
+   
+    const { storeName} = req.params;
+    console.log(storeName)
+    try {
+      const store = await Store.find({ name: { $regex: new RegExp(storeName, 'i') } }).populate('products');
+      if (!store) {
+        return res.status(404).json({ success: false, message: "Store not found" });
+      }
+      console.log(store)
+      return res.status(200).json({ success: true, products: store[0].products ,color: store[0].color});
+    } catch (err) {
+      console.error(err);
+      return res.status(400).json({ success: false, message: "Error in getting products" });
+    }
+    return res.json("hello")
+  };
   
   module.exports = {
     addProduct,
@@ -309,7 +325,8 @@ const addProduct = async (req, res) => {
     // getProductById,
     getAllProductData,
     // getProductByName,
-    getAllStoreProductByPagination
+    getAllStoreProductByPagination,
+    getStoreProducts
   };
 
 // const addProduct=(req,res)=>{

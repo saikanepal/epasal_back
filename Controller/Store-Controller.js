@@ -6,7 +6,6 @@ const cloudinary = require("cloudinary").v2;
 
 const createStore = async (req, res) => {
 
-    console.log(req.body, "req body")
     const {
         name,
         logo,
@@ -30,11 +29,9 @@ const createStore = async (req, res) => {
         fonts,
         featuredProducts,
     } = req.body.store;
-    // console.log(req.body.store, "store")
     try {
         // Create products if products data is provided
         const dataExists = await Store.findOne({ name: new RegExp(`^${name.trim()}$`, 'i') });
-        console.log(dataExists);
         if (dataExists) {
             return res.status(400).json({ message: "Store already exists" });
         }
@@ -148,7 +145,6 @@ const getStore = async (req, res) => {
         console.log(storeName,"store name")
         // Retrieve store based on case-insensitive search by store name
         const store = await Store.findOne({ name: { $regex: new RegExp('^' + req.params.storeName + '$', 'i') } });
-
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
@@ -176,13 +172,12 @@ const getStore = async (req, res) => {
     }
 };
 
+
 const getStoreByName = async (req, res) => {
     try {
         // Retrieve store with all products and staff based on storeName
-        // const storeName = req.params.storeName.replace(' ','');
-        const storeName = req.params.storeName.replace(" ","");
-        console.log(storeName,"store name")
-        const store = await Store.findOne({ name: { $regex: new RegExp(`^${storeName}$`, 'i') } });
+        const storeName = req.params.storeName.trim();
+        const store = await Store.findOne({ name: { $regex: new RegExp(`^${storeName}$`, 'i') } }).populate('owner');
 
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
@@ -238,7 +233,6 @@ const updateStore = async (req, res) => {
     // Remove the products field from the updateData if it exists // products are being handled respectively 
     // TODO Delete image left 
     delete updateData.products;
-    console.log(req.body.store, "my body")
     try {
         // Find the store by ID and update it with the new data
         const updatedStore = await Store.findByIdAndUpdate(id, updateData, {

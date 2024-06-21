@@ -5,6 +5,12 @@ const esewaTransactionSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    transaction_code: String,
+    payment_method: {
+        type: String,
+        required: true,
+        default: "esewa",
+    },
     signature: {
         type: String,
         required: true,

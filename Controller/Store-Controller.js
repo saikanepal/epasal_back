@@ -170,7 +170,7 @@ const getStoreByName = async (req, res) => {
     try {
         // Retrieve store with all products and staff based on storeName
         const storeName = req.params.storeName.trim();
-        const store = await Store.findOne({ name: { $regex: new RegExp(`^${storeName}$`, 'i') } });
+        const store = await Store.findOne({ name: { $regex: new RegExp(`^${storeName}$`, 'i') } }).populate('owner');
 
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });

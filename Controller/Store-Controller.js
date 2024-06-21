@@ -36,10 +36,15 @@ const createStore = async (req, res) => {
             return res.status(400).json({ message: "Store already exists" });
         }
         let savedProducts = [];
-
+        let count=1;
+        
         if (products && products.length > 0) {
             // Iterate through products and create them
             for (const productData of products) {
+                if(count>30){
+                    break;
+                }
+                count++;
                 const {
                     name,
                     description,
@@ -136,6 +141,8 @@ const createStore = async (req, res) => {
 
 const getStore = async (req, res) => {
     try {
+        const storeName = req.params.storeName.trim();
+        console.log(storeName,"store name")
         // Retrieve store based on case-insensitive search by store name
         const store = await Store.findOne({ name: { $regex: new RegExp('^' + req.params.storeName + '$', 'i') } });
         if (!store) {
@@ -303,7 +310,7 @@ const deleteStore = async (req, res) => {
 const updateDashboardStore = async (req, res) => {
     const { storeID } = req.params;
     const newData = req.body;
-
+    let promoCodeFlag=false;
     try {
         // Fetch the old store data to check for existing images
         const oldStore = await Store.findById(storeID);
@@ -323,7 +330,25 @@ const updateDashboardStore = async (req, res) => {
             console.log("Deleting old Khalti image:", oldStore.khalti.qr.imageID);
             await cloudinary.uploader.destroy(oldStore.khalti.qr.imageID);
         }
-
+        const promoCodeLimit = {
+            Silver: 0,
+            Gold: 1,
+            Platinum: 1,
+        };
+        const myPromoLimit=promoCodeLimit[oldStore.subscriptionStatus]
+        if(newData?.promoCode && newData.promoCode.length>myPromoLimit){      
+                delete newData.promoCode;
+                promoCodeFlag=true
+        }
+        const LiveChatAvailable = {
+            Silver: 0,
+            Gold: 1,
+            Platinum: 1,
+        };
+        const myLiveChatAvailable=LiveChatAvailable[oldStore.subscriptionStatus]
+        if(myLiveChatAvailable===0){      
+            delete newData.liveChatSource;
+        }
         // Find the store by ID and update it with the new data
         const updatedStore = await Store.findByIdAndUpdate(
             storeID,
@@ -337,6 +362,9 @@ const updateDashboardStore = async (req, res) => {
         }
 
         // Return the updated store data
+        if(promoCodeFlag){
+            return res.status(200).json({ updatedStore, message: 'Update successful promoCode deleted Promo Inventory Cap' });
+        }
         return res.status(200).json({ updatedStore, message: 'Update successful' });
     } catch (error) {
         // Handle any errors that occurred during the update process

@@ -9,7 +9,7 @@ const checkRole = require('../MiddleWare/checkRole');
 
 
 //authentication middleware
-router.use(checkAuth);  
+// router.use(checkAuth);  
 
 router.post('/create', storeController.createStore);
 

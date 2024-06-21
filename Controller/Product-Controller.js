@@ -2,6 +2,7 @@ const Product = require("../Model/Product-model");
 const Review = require("../Model/Review-Model");
 const Store = require("../Model/Store-model");
 const cloudinary = require("cloudinary").v2;
+const mongoose = require('mongoose');
           
 cloudinary.config({ 
   cloud_name: 'djx7wx2lc', 
@@ -11,33 +12,52 @@ cloudinary.config({
 
 
 const addProduct = async (req, res) => {
-    const { name, description, category, price, variant, inventory, storeId } = req.body;
-    try {
+  const { name, description, image, category, price, variant, inventory, storeId, subcategories } = req.body.formState;
+  try {
+      // Define product limits based on subscription status
+      const productLimits = {
+          Silver: 30,
+          Gold: 1000,
+          Platinum: 10000,
+      };
+
+      // Fetch the store using storeId
+      const store = await Store.findById(storeId);
+      if (!store) {
+          return res.status(404).json({ success: false, message: "Store not found" });
+      }
+
+      // Determine the limit based on the store's subscription status
+      const limit = productLimits[store.subscriptionStatus] || 0;
+
+      // Check the current number of products
+      if (store.products.length >= limit) {
+          return res.status(400).json({ success: false, message: `Product limit reached for ${store.subscriptionStatus} plan` });
+      }
+
+      // Create a new product
       const newProduct = new Product({
-        name,
-        description,
-        category,
-        price,
-        variant,
-        inventory,
-        image: variant[0].options[0].image
+          name,
+          description,
+          category,
+          subcategories,
+          price,
+          variant,
+          inventory,
+          image
       });
       await newProduct.save();
-  
-      const store = await Store.findById(storeId);
-      if (store) {
-        store.products.push(newProduct._id);
-        await store.save();
-      } else {
-        return res.status(404).json({ success: false, message: "Store not found" });
-      }
-  
+
+      // Add the new product to the store's products
+      store.products.push(newProduct._id);
+      await store.save();
+
       return res.status(200).json({ success: true, message: "Product Added Successfully" });
-    } catch (err) {
-      console.error(err);
+  } catch (err) {
+      console.log(err);
       return res.status(400).json({ success: false, message: "Error in adding product" });
-    }
-  };
+  }
+};
   
   const updateProduct = async (req, res) => {
     const { id, updates } = req.body;
@@ -59,107 +79,237 @@ const addProduct = async (req, res) => {
           }
         }
       }
+
+      
       const product = await Product.findByIdAndUpdate(id, updates, { new: true });
       if (!product) {
         return res.status(404).json({ success: false, message: "Product not found" });
       }
       return res.status(200).json({ success: true, message: "Product updated successfully", product });
     } catch (err) {
-      console.error(err);
+      console.log(err);
       return res.status(400).json({ success: false, message: "Error in updating product" });
     }
   };
   
   const DeleteProduct = async (req, res) => {
-    const { id, storeId } = req.body;
+    const { id,storeId } = req.body;
     try {
+      console.log(req.body,"aindoa")
       const product = await Product.findById(id);
-      
       if (!product) {
         return res.status(404).json({ success: false, message: "Product not found" });
       }
-
-      if (product.image && product.image.imageId) {
-        await cloudinary.uploader.destroy(product.image.imageId);
+  
+      // Delete main product image if exists
+      if (product.image && product.image.imageID) {
+        await cloudinary.uploader.destroy(product.image.imageID);
       }
-      const store = await Store.findById(storeId);
-      for(items in product.variant){
-        for(item in items.options){
-          if(item.image.imageId!=null){
-            await cloudinary.uploader.destroy(item.image.imageId);
+  
+      // Delete variant images if they exist
+      if (product.variant && product.variant[0] && product.variant[0].options) {
+        const deletePromises = product.variant[0].options.map(async (item) => {
+          if (item.image && item.image.imageID) {
+            return cloudinary.uploader.destroy(item.image.imageID);
           }
-        }
+        });
+  
+        await Promise.all(deletePromises);
       }
-      
+  
+      // Find the store and remove the product reference
+      const store = await Store.findById(storeId);
       if (store) {
         store.products = store.products.filter(productId => productId.toString() !== id);
         await store.save();
       } else {
         return res.status(404).json({ success: false, message: "Store not found" });
       }
-      console.log(product)
-      await Review.deleteMany({_id:{$in:product.review}})    //testing for review remaining
+  
+      // Delete related reviews
+      await Review.deleteMany({ _id: { $in: product.review } });
+  
+      // Finally, delete the product
       await Product.findByIdAndDelete(id);
-      return res.status(200).json({ success: true, message: "Product deleted Successfully" });
+  
+      return res.status(200).json({ success: true, message: "Product deleted successfully" });
     } catch (err) {
-      console.error(err);
+      console.log(err);
       return res.status(400).json({ success: false, message: "Error in deleting product" });
     }
   };
   
+  
   const getAllProductData = async (req, res) => {
     const { storeId } = req.params;
     try {
+        const store = await Store.findById(storeId);
+        if (!store) {
+            return res.status(404).json({ success: false, message: "Store not found" });
+        }
+
+        // Define product limits based on subscription status
+        const productLimits = {
+            Silver: 30,
+            Gold: 1000,
+            Platinum: 10000,
+        };
+
+        // Determine the limit based on the store's subscription status
+        const limit = productLimits[store.subscriptionStatus] || 0;
+
+        // Populate products with a limit
+        await store.populate({
+            path: 'products',
+            options: { limit: limit }
+        }).execPopulate();
+
+        return res.status(200).json({ success: true, products: store.products });
+    } catch (err) {
+        console.log(err);
+        return res.status(400).json({ success: false, message: "Error in getting products" });
+    }
+};
+
+
+  // const getProductById = async (req, res) => {
+  //   const { id } = req.params;
+  //   try {
+  //     const product = await Product.findById(id);
+  //     if (!product) {
+  //       return res.status(404).json({ success: false, message: "Product not found" });
+  //     }
+  //     return res.status(200).json({ success: true, product });
+  //   } catch (err) {
+  //     console.log(err);
+  //     return res.status(400).json({ success: false, message: "Error in getting product" });
+  //   }
+  //   return res.json("hello");
+  // };
+
+  // const getProductByName = async (req, res) => {
+  //   const { name } = req.body;
+  //   try {
+  //     const product = await Product.find({ name: { $regex: new RegExp(name, 'i') } });
+  //     if (product.length===0) {
+  //       return res.status(404).json({ success: false, message: "Product not found" });
+  //     }
+  //     return res.status(200).json({ success: true, product });
+  //   } catch (err) {
+  //     console.log(error);
+  //     return res.status(400).json({ success: false, message: "Error in getting product" });
+  //   }
+  // };
+  
+  const getAllStoreProductByPagination = async (req, res) => {
+    const { storeId } = req.params;
+    const { page = 1, limit = 10, search = '', sortOrder = 'asc', productId, minPrice, maxPrice } = req.query;
+  
+    try {
+      // Initialize search conditions for products
+      const searchConditions = [];
+  
+      // Split search terms by comma and trim spaces
+      const searchTerms = search.split(',').map(term => term.trim());
+  
+      // Only add search conditions if search terms are provided
+      if (searchTerms.length > 0) {
+        searchTerms.forEach(term => {
+          const termConditions = [
+            { name: { $regex: term, $options: 'i' } },
+            { description: { $regex: term, $options: 'i' } }
+          ];
+  
+          // Add additional search fields here if needed
+  
+          if (mongoose.Types.ObjectId.isValid(term)) {
+            termConditions.push({ _id: mongoose.Types.ObjectId(term) });
+          }
+  
+          searchConditions.push({ $or: termConditions });
+        });
+      }
+  
+      // Find the store by ID and populate its products
       const store = await Store.findById(storeId).populate('products');
       if (!store) {
-        return res.status(404).json({ success: false, message: "Store not found" });
+        return res.status(404).json({ message: 'Store not found' });
       }
-      return res.status(200).json({ success: true, products: store.products });
-    } catch (err) {
-      console.error(err);
-      return res.status(400).json({ success: false, message: "Error in getting products" });
-    }
-    return res.json("hello")
-  };
-
-
-  const getProductById = async (req, res) => {
-    const { id } = req.params;
-    try {
-      const product = await Product.findById(id);
-      if (!product) {
-        return res.status(404).json({ success: false, message: "Product not found" });
+  
+      // Define product limits based on subscription status
+      const productLimits = {
+        Silver: 5,
+        Gold: 10,
+        Platinum: 20,
+      };
+  
+      // Determine the limit based on the store's subscription status
+      const limitPerSubscription = productLimits[store.subscriptionStatus] || 0;
+  
+      // Ensure that the limit respects both pagination limit and subscription limit
+      const effectiveLimit = Math.min(parseInt(limit), limitPerSubscription);
+  
+      // Extract product IDs from populated store
+      const productIds = store.products.map(product => product._id);
+  
+      // Initialize match criteria for product search
+      const matchCriteria = {
+        $and: [
+          { _id: { $in: productIds } },
+          ...(searchConditions.length > 0 ? searchConditions : [])
+        ]
+      };
+  
+      // Push additional conditions based on query parameters
+      if (productId && mongoose.Types.ObjectId.isValid(productId)) {
+        matchCriteria.$and.push({ _id: mongoose.Types.ObjectId(productId) });
       }
-      return res.status(200).json({ success: true, product });
-    } catch (err) {
-      console.error(err);
-      return res.status(400).json({ success: false, message: "Error in getting product" });
-    }
-    return res.json("hello");
-  };
-
-  const getProductByName = async (req, res) => {
-    const { name } = req.body;
-    try {
-      const product = await Product.find({ name: { $regex: new RegExp(name, 'i') } });
-      if (product.length===0) {
-        return res.status(404).json({ success: false, message: "Product not found" });
+  
+      if (minPrice && maxPrice) {
+        matchCriteria.$and.push({ price: { $gte: parseFloat(minPrice), $lte: parseFloat(maxPrice) } });
+      } else if (minPrice) {
+        matchCriteria.$and.push({ price: { $gte: parseFloat(minPrice) } });
+      } else if (maxPrice) {
+        matchCriteria.$and.push({ price: { $lte: parseFloat(maxPrice) } });
       }
-      return res.status(200).json({ success: true, product });
-    } catch (err) {
-      console.error(err);
-      return res.status(400).json({ success: false, message: "Error in getting product" });
+  
+      // Perform aggregation to fetch products
+      const products = await Product.aggregate([
+        { $match: matchCriteria },
+        { $sort: { revenueGenerated: sortOrder === 'asc' ? 1 : -1 } },
+        { $skip: (parseInt(page) - 1) * parseInt(effectiveLimit) },
+        { $limit: parseInt(effectiveLimit) }
+      ]);
+  
+      // Count total matching products
+      const totalProducts = await Product.countDocuments(matchCriteria);
+      const totalPages = Math.ceil(totalProducts / effectiveLimit);
+  
+      // Send response
+      res.status(200).json({
+        products,
+        totalProducts,
+        totalPages,
+        currentPage: parseInt(page),
+      });
+  
+    } catch (error) {
+      console.error('Error fetching store products:', error.message);
+      res.status(500).json({ message: 'Error fetching store products', error: error.message });
     }
-    return res.json("hello");
   };
+  
+  
+  
   
   module.exports = {
     addProduct,
     updateProduct,
     DeleteProduct,
-    getProductById,
+    // getProductById,
     getAllProductData,
-    getProductByName
+    // getProductByName,
+    getAllStoreProductByPagination
   };
 
 // const addProduct=(req,res)=>{

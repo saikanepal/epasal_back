@@ -1,92 +1,60 @@
 const mongoose = require('mongoose');
 const User = require('./User-model');
 const Product = require('./Product-model');
-
+const Order = require('./Order-model'); // Ensure to require the Order model if it's used in the pre-remove hook
 
 const storeSchema = new mongoose.Schema({
-    name: { type: String, required: true, index: true },
+    name: { type: String, required: true, index: true }, // Indexed field
     logo: {
-        logoUrl: {
-            type: String
-        },
-        logoID: {
-            type: String
-        }
+        logoUrl: { type: String },
+        logoID: { type: String }
     },
-    phoneNumber: { type: String }, // Phone number of the store
-    email: { type: String }, // Email address of the store
+    phoneNumber: { type: String },
+    email: { type: String },
     categories: [{ name: { type: String, required: true } }],
     subCategories: [{ name: { type: String, required: true } }],
-    products: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }], // Reference to Product model,
+    products: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
     featuredProducts: [{ type: Number }],
-    color: { type: Object }, // You can adjust this based on your requirements
+    color: { type: Object },
     banner: {
-        bannerUrl: {
-            type: String
-        },
-        bannerID: {
-            type: String
-        }
+        bannerUrl: { type: String },
+        bannerID: { type: String }
     },
     secondaryBanner: {
         secondaryBannerUrl: { type: String },
-        secondaryBannerID: { type: String },
+        secondaryBannerID: { type: String }
     },
     thirdBanner: {
         thirdBannerUrl: { type: String },
-        thirdBannerID: { type: String },
+        thirdBannerID: { type: String }
     },
-    //location 
-    location: {
-        type: String
-    }, // Location of the store
+    location: { type: String },
     address: { type: String },
-
     previewMode: { type: Boolean, default: true },
-    //footer details
     socialMediaLinks: {
         facebook: { type: String },
         twitter: { type: String },
         instagram: { type: String },
         linkedin: { type: String }
     },
-    //order and analytics
     revenueGenerated: { type: Number, default: 0 },
-    orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order', index: true }],
-    customers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
+    customers: { type: Number },
     dueAmount: { type: Number, default: 0 },
     pendingAmount: { type: Number, default: 0 },
-    mostSoldItem: { type: Number },
-    visitors: { type: Number, default: 0 }, // todo : Restrict (react-cookie check?) = > rate limiter express?
-    conversitionRate: { type: Number, default: 0 },  // order / visitors * 100 %
-
-    // productSold: [{
-    //     product: {
-    //         type: mongoose.Schema.Types.ObjectId, ref: Product
-    //     },
-    //     soldQuantity: { type: Number }
-    // }],
-    // 1st oder : if (phoneN in Retention ? : false => phoneNumber in order :false =>  )
-    // retentionRate: [{
-    //     orderInfo: [{
-    //         type: mongoose.Schema.Types.ObjectId,
-    //         ref: 'Order'
-    //     }],
-    //     timestamp: {
-    //         type: Date,
-    //         default: Date.now
-    //     },
-    //     count: {
-    //         type: Number
-    //     }
-    // }],
-    // 
+    mostSoldItem: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
+    visitors: { type: Number, default: 0 },
+    conversitionRate: { type: Number, default: 0 },
     footerDescription: { type: String },
-    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true }, // Reference to User model for admin
-    staff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', index: true }], // Array of references to User model for staff
-    subscriptionStatus: { type: String, default: 'Silver' },// Subscription status field with default value 'Active'
-    activeTheme: { type: Number, default: '1' },
-    componentTheme: { type: Object },  //Navbar : 1 
+    owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    staff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    subscriptionStatus: { 
+        type: String, 
+        enum: ['Silver', 'Gold', 'Platinum'], 
+        default: 'Silver' 
+    },
+    activeTheme: { type: Number, default: 1 },
+    componentTheme: { type: Object },
     secondaryBannerText: {
         heading: { type: String, default: "" },
         paragraph: { type: String, default: "" }
@@ -96,49 +64,51 @@ const storeSchema = new mongoose.Schema({
         paragraph: { type: String, default: "" }
     },
     offerBanner: {
-        offerBannerUrl: {
-            type: String
-        },
-        offerBannerID: {
-            type: String
-        }
+        offerBannerUrl: { type: String },
+        offerBannerID: { type: String }
     },
     offerBannerText: {
         para1: { type: String, default: "" },
         para2: { type: String, default: "" },
         para3: { type: String, default: "" }
     },
-    //promoCode : may need to restrict in controller
+    esewa: {
+        accountNumber: { type: String, default: "" },
+        qr: {
+            imageUrl: { type: String, default: "" },
+            imageID: { type: String, default: "" }
+        }
+    },
+    bank: {
+        accountNumber: { type: String, default: "" },
+        fullname: { type: String, default: "" },
+        qr: {
+            imageUrl: { type: String, default: "" },
+            imageID: { type: String, default: "" }
+        }
+    },
+    khalti: {
+        accountNumber: { type: String, default: "" },
+        qr: {
+            imageUrl: { type: String, default: "" },
+            imageID: { type: String, default: "" }
+        }
+    },
     promoCode: [
         {
-            name: {
-                type: String
-            },
-            value: {
-                type: Number,
-                default: 0
-            },
-            // expireDate : ' certain date' , after this date user recieves expired warning 
+            name: { type: String },
+            value: { type: Number, default: 0 }
         }
     ],
-    fonts: {
-        type: Object
-    }
-});
+    fonts: { type: Object }
+}, { timestamps: true });
 
-// Pre-remove hook to handle cleanup of related orders and products before a Store document is removed
 storeSchema.pre('remove', async function (next) {
     try {
-        // Delete all Order documents where the _id is in the orders array of the Store document being removed
         await Order.deleteMany({ _id: { $in: this.orders } });
-
-        // Delete all Product documents where the _id is in the products array of the Store document being removed
         await Product.deleteMany({ _id: { $in: this.products } });
-
-        // Proceed to the next middleware or the actual removal of the Store document
         next();
     } catch (err) {
-        // Pass any errors to the next middleware
         next(err);
     }
 });

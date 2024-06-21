@@ -179,38 +179,58 @@ const getLoggedInUser = async (req, res) => {
 const addEmployee = async (req, res) => {
     const { email, storeId, newRole } = req.body;
 
-
     try {
         // Check if the store exists
         const store = await Store.findById(storeId);
         if (!store) {
             throw { status: 404, message: 'Store not found' };
         }
+
         // Find the user by email
         const user = await User.findOne({ email: email });
         if (!user) {
             throw { status: 404, message: 'User not found' };
         }
 
+        // Define employee limits based on subscription status
+        const employeeLimits = {
+            Silver: 2,
+            Gold: 5,
+            Platinum: 10,
+        };
+
+        // Determine the limit based on the store's subscription status
+        const limit = employeeLimits[store.subscriptionStatus] || 0;
+
+        // Check if adding another employee exceeds the limit
+        if (store.staff.length >= limit) {
+            return res.status(400).json({ message: `Employee limit reached for ${store.subscriptionStatus} plan` });
+        }
+
         const validRoles = ['Staff', 'Delivery', 'Admin'];
         if (!validRoles.includes(newRole)) {
             throw { status: 400, message: 'Invalid role' };
         }
-
+        
         // Check if the user already has a role for the specified store
         const existingRole = user.roles.find(role => role.storeId.toString() === storeId);
         if (existingRole) {
             return res.status(400).json({ message: 'User already has a role for this store' });
         }
+
+        // Add store to user's stores array
         user.stores.push(store._id);
+
         // Add a new role entry
         user.roles.push({ storeId, role: newRole });
 
-        // Save the user with the new role
-        await user.save();
+       
 
-        // Add user ID to the store's staff array 
+        // Add user ID to the store's staff array
         store.staff.push(user._id);
+
+         // Save the user with the new role
+        await user.save();
         await store.save();
 
         res.status(200).json({ message: 'Employee role added successfully' });
@@ -220,6 +240,7 @@ const addEmployee = async (req, res) => {
         res.status(status).json({ message: error.message });
     }
 };
+
 
 
 

@@ -5,7 +5,7 @@ const EsewaTransaction = require('./Esewa-model');
 const orderSchema = new mongoose.Schema({
     // Customer details
     fullName: { type: String, required: true },
-    phoneNumber: { type: String, required: true },
+    phoneNumber: { type: String, required: true ,index:true },
     email: { type: String, match: /.+\@.+\..+/ },
 
     // Order status

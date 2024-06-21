@@ -279,7 +279,6 @@ const addProduct = async (req, res) => {
         { $skip: (parseInt(page) - 1) * parseInt(effectiveLimit) },
         { $limit: parseInt(effectiveLimit) }
       ]);
-  
       // Count total matching products
       const totalProducts = await Product.countDocuments(matchCriteria);
       const totalPages = Math.ceil(totalProducts / effectiveLimit);

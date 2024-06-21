@@ -100,7 +100,10 @@ const storeSchema = new mongoose.Schema({
             value: { type: Number, default: 0 }
         }
     ],
-    fonts: { type: Object }
+    fonts: { type: Object },
+    expectedDeliveryTime:{type:String,default:'3 to 4 business days'},
+    expectedDeliveryPrice:{type:Number,default:100},
+    liveChatSource:{type:String,default:''},
 }, { timestamps: true });
 
 storeSchema.pre('remove', async function (next) {

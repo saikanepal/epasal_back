@@ -1,6 +1,8 @@
 const mongoose = require("mongoose");
 
-const paymentSchema = mongoose.Schema(
+const paymentSchema = mongoose.Schema
+
+(
     {
         payment_method: {
             type: String,

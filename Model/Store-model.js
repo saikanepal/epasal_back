@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const User = require('./User-model');
 const Product = require('./Product-model');
 const Order = require('./Order-model'); // Ensure to require the Order model if it's used in the pre-remove hook
+const esewaTransactionSchema = require('./Esewa-model');
 
 const storeSchema = new mongoose.Schema({
     name: { type: String, required: true, index: true }, // Indexed field
@@ -37,9 +38,11 @@ const storeSchema = new mongoose.Schema({
         instagram: { type: String },
         linkedin: { type: String }
     },
+    inventory:{type:Number,default:0},
     revenueGenerated: { type: Number, default: 0 },
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
-    customers: { type: Number },
+    payments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'esewaTransactionSchema' }], // subscrition / skin // 
+    customers: { type: Number , default:0 },
     dueAmount: { type: Number, default: 0 },
     pendingAmount: { type: Number, default: 0 },
     mostSoldItem: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
@@ -53,6 +56,12 @@ const storeSchema = new mongoose.Schema({
         enum: ['Silver', 'Gold', 'Platinum'], 
         default: 'Silver' 
     },
+    logs:[{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
+    subscriptionExpiry: {
+        type: Date,
+        default: () => new Date().setFullYear(new Date().getFullYear() + 1)  // Default to one year from current date
+    },
+    
     activeTheme: { type: Number, default: 1 },
     componentTheme: { type: Object },
     secondaryBannerText: {

@@ -354,7 +354,7 @@ const updateOrder = async (req, res) => {
         const updatedOrder = await Order.findByIdAndUpdate(
             orderId,
             updateData,
-            { new: true, session }
+            { new: true, session, runValidators: true }
         );
 
         await session.commitTransaction();

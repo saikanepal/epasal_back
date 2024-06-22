@@ -23,6 +23,15 @@ const esewaTransactionSchema = new mongoose.Schema(
             enum: ["created", "paid", "shipping", "delivered"],
             default: "created",
         },
+        duration: {
+            type: String,
+            default: 'monthly',
+        },
+        used: {
+            type: Boolean,
+            default: false
+        },
+
         address: String,
     },
     {

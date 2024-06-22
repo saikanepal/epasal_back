@@ -36,15 +36,10 @@ const createStore = async (req, res) => {
             return res.status(400).json({ message: "Store already exists" });
         }
         let savedProducts = [];
-        let count=1;
-        
+
         if (products && products.length > 0) {
             // Iterate through products and create them
             for (const productData of products) {
-                if(count>30){
-                    break;
-                }
-                count++;
                 const {
                     name,
                     description,
@@ -141,8 +136,6 @@ const createStore = async (req, res) => {
 
 const getStore = async (req, res) => {
     try {
-        const storeName = req.params.storeName.trim();
-        console.log(storeName,"store name")
         // Retrieve store based on case-insensitive search by store name
         const store = await Store.findOne({ name: { $regex: new RegExp('^' + req.params.storeName + '$', 'i') } });
         if (!store) {
@@ -310,7 +303,7 @@ const deleteStore = async (req, res) => {
 const updateDashboardStore = async (req, res) => {
     const { storeID } = req.params;
     const newData = req.body;
-    let promoCodeFlag=false;
+
     try {
         // Fetch the old store data to check for existing images
         const oldStore = await Store.findById(storeID);
@@ -330,25 +323,7 @@ const updateDashboardStore = async (req, res) => {
             console.log("Deleting old Khalti image:", oldStore.khalti.qr.imageID);
             await cloudinary.uploader.destroy(oldStore.khalti.qr.imageID);
         }
-        const promoCodeLimit = {
-            Silver: 0,
-            Gold: 1,
-            Platinum: 1,
-        };
-        const myPromoLimit=promoCodeLimit[oldStore.subscriptionStatus]
-        if(newData?.promoCode && newData.promoCode.length>myPromoLimit){      
-                delete newData.promoCode;
-                promoCodeFlag=true
-        }
-        const LiveChatAvailable = {
-            Silver: 0,
-            Gold: 1,
-            Platinum: 1,
-        };
-        const myLiveChatAvailable=LiveChatAvailable[oldStore.subscriptionStatus]
-        if(myLiveChatAvailable===0){      
-            delete newData.liveChatSource;
-        }
+
         // Find the store by ID and update it with the new data
         const updatedStore = await Store.findByIdAndUpdate(
             storeID,
@@ -362,9 +337,6 @@ const updateDashboardStore = async (req, res) => {
         }
 
         // Return the updated store data
-        if(promoCodeFlag){
-            return res.status(200).json({ updatedStore, message: 'Update successful promoCode deleted Promo Inventory Cap' });
-        }
         return res.status(200).json({ updatedStore, message: 'Update successful' });
     } catch (error) {
         // Handle any errors that occurred during the update process
@@ -374,30 +346,70 @@ const updateDashboardStore = async (req, res) => {
 };
 
 const updateSubscription = async (req, res) => {
-    console.log("here");
     const { transactionID } = req.params;
-    console.log(req.params);
-    console.log(transactionID);
     try {
         // Fetch the transaction data to check for existing details
         const savedTransaction = await esewaTransaction.findById(transactionID);
         if (!savedTransaction) {
             return res.status(404).json({ message: 'Transaction not found' });
         }
-        console.log(savedTransaction);
-        // Populate the store and select only the subscriptionStatus field
+
+        // Populate the store and select subscriptionStatus and subscriptionExpiry fields
         await savedTransaction.populate({
             path: 'store',
-            select: 'subscriptionStatus'
+            select: 'subscriptionStatus subscriptionExpiry'
         })
 
+        if(savedTransaction.used){
+            return res.status(401).json({message:'Payment Already Went Through'})
+        }
+        savedTransaction.used=true;
+   
         const store = savedTransaction.store;
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
 
-        // Update the store's subscription status
+        // Update store's subscription status
         store.subscriptionStatus = savedTransaction.subscription;
+        await savedTransaction.save();
+        // Calculate new subscriptionExpiry based on savedTransaction.duration
+        const currentDate = new Date();
+        let newExpiryDate;
+
+        switch (savedTransaction.duration) {
+            case 'monthly':
+                if (store.subscriptionExpiry) {
+                    newExpiryDate = new Date(store.subscriptionExpiry);
+                    newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
+                } else {
+                    return res.status(400).json({ message: 'Previous subscription expiry not found' });
+                }
+                break;
+            case 'quarterly':
+                if (store.subscriptionExpiry) {
+                    newExpiryDate = new Date(store.subscriptionExpiry);
+                    newExpiryDate.setMonth(newExpiryDate.getMonth() + 3);
+                } else {
+                    return res.status(400).json({ message: 'Previous subscription expiry not found' });
+                }
+                break;
+            case 'yearly':
+                if (store.subscriptionExpiry) {
+                    newExpiryDate = new Date(store.subscriptionExpiry);
+                    newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+                } else {
+                    return res.status(400).json({ message: 'Previous subscription expiry not found' });
+                }
+                break;
+            default:
+                return res.status(400).json({ message: 'Invalid duration type' });
+        }
+
+
+        // Update store's subscriptionExpiry
+        store.subscriptionExpiry = newExpiryDate;
+        store.payments.push(transactionID);
 
         // Save the updated store data
         const updatedStore = await store.save();
@@ -410,6 +422,7 @@ const updateSubscription = async (req, res) => {
         return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
     }
 };
+
 
 
 

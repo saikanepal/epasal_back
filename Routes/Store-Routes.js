@@ -5,6 +5,7 @@ const storeController = require('../Controller/Store-Controller');
 //middlewares
 const checkAuth = require('../MiddleWare/checkAuth');
 const checkRole = require('../MiddleWare/checkRole');
+const checkBanauRole = require('../MiddleWare/checkBanauRole');
 // Define routes
 
 
@@ -20,6 +21,8 @@ router.get('/getactiveTheme/:storeID', storeController.getActiveTheme);
 
 router.patch('/update/:id', storeController.updateStore);
 router.put('/update/dashboard/:storeID', storeController.updateDashboardStore);
+router.put('/update/dashboard/banau/:storeID',checkBanauRole('Admin'),storeController.updateDashboardStore);
+
 
 router.get('/getstorebyfilter', storeController.getStoreByFilter);
 //store delete

@@ -2,7 +2,7 @@ const Store = require('../Model/Store-model'); // Import the Store model
 const Product = require('../Model/Product-model'); // Import the Product model
 const User = require('../Model/User-model'); // Import the User model|
 const cloudinary = require("cloudinary").v2;
-
+const mongoose = require('mongoose');
 
 const createStore = async (req, res) => {
 
@@ -312,20 +312,22 @@ const updateDashboardStore = async (req, res) => {
         // Fetch the old store data to check for existing images
         const oldStore = await Store.findById(storeID);
 
-        // Check and delete old images if they exist and are being updated
-        if (oldStore.esewa && oldStore.esewa.qr && oldStore.esewa.qr.imageUrl && oldStore.esewa.qr.imageUrl !== newData?.esewa?.qr?.imageUrl) {
-            console.log("Deleting old eSewa image:", oldStore.esewa.qr.imageID);
-            await cloudinary.uploader.destroy(oldStore.esewa.qr.imageID);
-        }
+        if (newData.esewa || newData.khalti || newData.bank) {
+            // Check and delete old images if they exist and are being updated
+            if (oldStore.esewa && oldStore.esewa.qr && oldStore.esewa.qr.imageUrl && oldStore.esewa.qr.imageUrl !== newData?.esewa?.qr?.imageUrl) {
+                console.log("Deleting old eSewa image:", oldStore.esewa.qr.imageID);
+                await cloudinary.uploader.destroy(oldStore.esewa.qr.imageID);
+            }
 
-        if (oldStore.bank && oldStore.bank.qr && oldStore.bank.qr.imageUrl && oldStore.bank.qr.imageUrl !== newData?.bank?.qr?.imageUrl) {
-            console.log("Deleting old Bank image:", oldStore.bank.qr.imageID);
-            await cloudinary.uploader.destroy(oldStore.bank.qr.imageID);
-        }
+            if (oldStore.bank && oldStore.bank.qr && oldStore.bank.qr.imageUrl && oldStore.bank.qr.imageUrl !== newData?.bank?.qr?.imageUrl) {
+                console.log("Deleting old Bank image:", oldStore.bank.qr.imageID);
+                await cloudinary.uploader.destroy(oldStore.bank.qr.imageID);
+            }
 
-        if (oldStore.khalti && oldStore.khalti.qr && oldStore.khalti.qr.imageUrl && oldStore.khalti.qr.imageUrl !== newData?.khalti?.qr?.imageUrl) {
-            console.log("Deleting old Khalti image:", oldStore.khalti.qr.imageID);
-            await cloudinary.uploader.destroy(oldStore.khalti.qr.imageID);
+            if (oldStore.khalti && oldStore.khalti.qr && oldStore.khalti.qr.imageUrl && oldStore.khalti.qr.imageUrl !== newData?.khalti?.qr?.imageUrl) {
+                console.log("Deleting old Khalti image:", oldStore.khalti.qr.imageID);
+                await cloudinary.uploader.destroy(oldStore.khalti.qr.imageID);
+            }
         }
 
         // Find the store by ID and update it with the new data
@@ -356,9 +358,10 @@ const updateDashboardStore = async (req, res) => {
 
 const getStoreByFilter = async (req, res) => {
     try {
+        // TODO -> Pending Amount Range
         const searchTerms = req.query.search ? req.query.search.split(',').map(term => term.trim()).filter(Boolean) : [];
         const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
+        const limit = parseInt(req.query.limit) || 2;
         const ownername = req.query.ownername ? req.query.ownername.trim() : '';
         const staffname = req.query.staffname ? req.query.staffname.trim() : '';
 

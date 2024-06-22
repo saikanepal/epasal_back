@@ -21,6 +21,7 @@ router.get('/getactiveTheme/:storeID', storeController.getActiveTheme);
 
 router.patch('/update/:id', storeController.updateStore);
 router.put('/update/dashboard/:storeID', storeController.updateDashboardStore);
+router.patch('/upgrade/storeSubscription/:transactionID', storeController.updateSubscription);
 router.put('/update/dashboard/banau/:storeID',checkBanauRole('Admin'),storeController.updateDashboardStore);
 
 

@@ -9,7 +9,7 @@ const storeRoute = require('./Routes/Store-Routes');
 const productRoute=require('./Routes/Product-Routes');
 const reviewRoute=require("./Routes/Review-Route");
 const orderRoute=require("./Routes/Order-Route");
-
+const paymentRoute = require("./Routes/Payment-Route");
 const app = express();
 const PORT = process.env.PORT || 8000;
 
@@ -39,4 +39,6 @@ app.use('/api/store', storeRoute);
 app.use('/api/product',productRoute);
 app.use('/api/review/',reviewRoute);
 app.use('/api/order/',orderRoute);
+app.use('/api/payment/',paymentRoute);
+
 

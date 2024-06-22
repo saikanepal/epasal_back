@@ -12,7 +12,7 @@ cloudinary.config({
 
 
 const addProduct = async (req, res) => {
-  const { name, description, image, category, price, variant, inventory, storeId, subcategories } = req.body.formState;
+  const { name, description, image, category, price, variant, inventory, subcategories } = req.body.formState;
   try {
       // Define product limits based on subscription status
       const productLimits = {
@@ -20,15 +20,15 @@ const addProduct = async (req, res) => {
           Gold: 1000,
           Platinum: 10000,
       };
-
+  
       // Fetch the store using storeId
-      const store = await Store.findById(storeId);
+      const store = await Store.findById(req.body.storeID);
       if (!store) {
           return res.status(404).json({ success: false, message: "Store not found" });
       }
 
       // Determine the limit based on the store's subscription status
-      const limit = productLimits[store.subscriptionStatus] || 0;
+      const limit = productLimits[store.subscriptionStatus] || 30;
 
       // Check the current number of products
       if (store.products.length >= limit) {
@@ -95,7 +95,6 @@ const addProduct = async (req, res) => {
   const DeleteProduct = async (req, res) => {
     const { id,storeId } = req.body;
     try {
-      console.log(req.body,"aindoa")
       const product = await Product.findById(id);
       if (!product) {
         return res.status(404).json({ success: false, message: "Product not found" });
@@ -150,13 +149,13 @@ const addProduct = async (req, res) => {
 
         // Define product limits based on subscription status
         const productLimits = {
-            Silver: 30,
+            Silver: 2,
             Gold: 1000,
             Platinum: 10000,
         };
 
         // Determine the limit based on the store's subscription status
-        const limit = productLimits[store.subscriptionStatus] || 0;
+        const limit = productLimits[store.subscriptionStatus] || 2;
 
         // Populate products with a limit
         await store.populate({
@@ -238,9 +237,9 @@ const addProduct = async (req, res) => {
   
       // Define product limits based on subscription status
       const productLimits = {
-        Silver: 5,
-        Gold: 10,
-        Platinum: 20,
+        Silver: 30,
+        Gold: 1000,
+        Platinum: 10000,
       };
   
       // Determine the limit based on the store's subscription status
@@ -280,7 +279,6 @@ const addProduct = async (req, res) => {
         { $skip: (parseInt(page) - 1) * parseInt(effectiveLimit) },
         { $limit: parseInt(effectiveLimit) }
       ]);
-  
       // Count total matching products
       const totalProducts = await Product.countDocuments(matchCriteria);
       const totalPages = Math.ceil(totalProducts / effectiveLimit);
@@ -300,7 +298,23 @@ const addProduct = async (req, res) => {
   };
   
   
-  
+  const getStoreProducts= async (req, res) => {
+   
+    const { storeName} = req.params;
+    console.log(storeName)
+    try {
+      const store = await Store.find({ name: { $regex: new RegExp(storeName, 'i') } }).populate('products');
+      if (!store) {
+        return res.status(404).json({ success: false, message: "Store not found" });
+      }
+      console.log(store)
+      return res.status(200).json({ success: true, products: store[0].products ,color: store[0].color});
+    } catch (err) {
+      console.error(err);
+      return res.status(400).json({ success: false, message: "Error in getting products" });
+    }
+    return res.json("hello")
+  };
   
   module.exports = {
     addProduct,
@@ -309,7 +323,8 @@ const addProduct = async (req, res) => {
     // getProductById,
     getAllProductData,
     // getProductByName,
-    getAllStoreProductByPagination
+    getAllStoreProductByPagination,
+    getStoreProducts
   };
 
 // const addProduct=(req,res)=>{

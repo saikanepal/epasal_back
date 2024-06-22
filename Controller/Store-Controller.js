@@ -2,11 +2,10 @@ const Store = require('../Model/Store-model'); // Import the Store model
 const Product = require('../Model/Product-model'); // Import the Product model
 const User = require('../Model/User-model'); // Import the User model|
 const cloudinary = require("cloudinary").v2;
-const mongoose = require('mongoose');
+const esewaTransaction = require('../Model/Esewa-model');const mongoose = require('mongoose');
 
 const createStore = async (req, res) => {
 
-    console.log(req.body, "req body");
     const {
         name,
         logo,
@@ -30,11 +29,9 @@ const createStore = async (req, res) => {
         fonts,
         featuredProducts,
     } = req.body.store;
-    // console.log(req.body.store, "store")
     try {
         // Create products if products data is provided
         const dataExists = await Store.findOne({ name: new RegExp(`^${name.trim()}$`, 'i') });
-        console.log(dataExists);
         if (dataExists) {
             return res.status(400).json({ message: "Store already exists" });
         }
@@ -141,7 +138,6 @@ const getStore = async (req, res) => {
     try {
         // Retrieve store based on case-insensitive search by store name
         const store = await Store.findOne({ name: { $regex: new RegExp('^' + req.params.storeName + '$', 'i') } });
-
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
@@ -160,7 +156,7 @@ const getStore = async (req, res) => {
         await store.populate({
             path: 'products',
             options: { limit: limit }
-        }).execPopulate();
+        })
 
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
@@ -169,11 +165,12 @@ const getStore = async (req, res) => {
     }
 };
 
+
 const getStoreByName = async (req, res) => {
     try {
         // Retrieve store with all products and staff based on storeName
         const storeName = req.params.storeName.trim();
-        const store = await Store.findOne({ name: { $regex: new RegExp(`^${storeName}$`, 'i') } });
+        const store = await Store.findOne({ name: { $regex: new RegExp(`^${storeName}$`, 'i') } }).populate('owner');
 
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
@@ -229,7 +226,6 @@ const updateStore = async (req, res) => {
     // Remove the products field from the updateData if it exists // products are being handled respectively 
     // TODO Delete image left 
     delete updateData.products;
-    console.log(req.body.store, "my body");
     try {
         // Find the store by ID and update it with the new data
         const updatedStore = await Store.findByIdAndUpdate(id, updateData, {
@@ -350,6 +346,87 @@ const updateDashboardStore = async (req, res) => {
         return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
     }
 };
+
+const updateSubscription = async (req, res) => {
+    const { transactionID } = req.params;
+    try {
+        // Fetch the transaction data to check for existing details
+        const savedTransaction = await esewaTransaction.findById(transactionID);
+        if (!savedTransaction) {
+            return res.status(404).json({ message: 'Transaction not found' });
+        }
+
+        // Populate the store and select subscriptionStatus and subscriptionExpiry fields
+        await savedTransaction.populate({
+            path: 'store',
+            select: 'subscriptionStatus subscriptionExpiry'
+        })
+
+        if(savedTransaction.used){
+            return res.status(401).json({message:'Payment Already Went Through'})
+        }
+        savedTransaction.used=true;
+   
+        const store = savedTransaction.store;
+        if (!store) {
+            return res.status(404).json({ message: 'Store not found' });
+        }
+
+        // Update store's subscription status
+        store.subscriptionStatus = savedTransaction.subscription;
+        await savedTransaction.save();
+        // Calculate new subscriptionExpiry based on savedTransaction.duration
+        const currentDate = new Date();
+        let newExpiryDate;
+
+        switch (savedTransaction.duration) {
+            case 'monthly':
+                if (store.subscriptionExpiry) {
+                    newExpiryDate = new Date(store.subscriptionExpiry);
+                    newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
+                } else {
+                    return res.status(400).json({ message: 'Previous subscription expiry not found' });
+                }
+                break;
+            case 'quarterly':
+                if (store.subscriptionExpiry) {
+                    newExpiryDate = new Date(store.subscriptionExpiry);
+                    newExpiryDate.setMonth(newExpiryDate.getMonth() + 3);
+                } else {
+                    return res.status(400).json({ message: 'Previous subscription expiry not found' });
+                }
+                break;
+            case 'yearly':
+                if (store.subscriptionExpiry) {
+                    newExpiryDate = new Date(store.subscriptionExpiry);
+                    newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+                } else {
+                    return res.status(400).json({ message: 'Previous subscription expiry not found' });
+                }
+                break;
+            default:
+                return res.status(400).json({ message: 'Invalid duration type' });
+        }
+
+
+        // Update store's subscriptionExpiry
+        store.subscriptionExpiry = newExpiryDate;
+        store.payments.push(transactionID);
+
+        // Save the updated store data
+        const updatedStore = await store.save();
+
+        // Return the updated store data
+        return res.status(200).json({ updatedStore, message: 'Update successful' });
+    } catch (error) {
+        // Handle any errors that occurred during the update process
+        console.error('Error updating store:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
+
+
+
 
 
 
@@ -473,5 +550,6 @@ module.exports = {
     deleteStore,
     getStoreByName,
     updateDashboardStore,
+    updateSubscription,
     getStoreByFilter
 };

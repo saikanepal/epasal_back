@@ -360,11 +360,11 @@ const updateSubscription = async (req, res) => {
             select: 'subscriptionStatus subscriptionExpiry'
         })
 
-        if(savedTransaction.used){
-            return res.status(401).json({message:'Payment Already Went Through'})
+        if (savedTransaction.used) {
+            return res.status(401).json({ message: 'Payment Already Went Through' })
         }
-        savedTransaction.used=true;
-   
+        savedTransaction.used = true;
+
         const store = savedTransaction.store;
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
@@ -423,6 +423,68 @@ const updateSubscription = async (req, res) => {
     }
 };
 
+const updateSkin = async (req, res) => {
+    const { transactionID } = req.params;
+    try {
+        // Fetch the transaction data to check for existing details
+        const savedTransaction = await esewaTransaction.findById(transactionID);
+        if (!savedTransaction) {
+            return res.status(404).json({ message: 'Transaction not found' });
+        }
+
+        // Check if the transaction has already been used
+        if (savedTransaction.used) {
+            return res.status(401).json({ message: 'Payment has already been processed' });
+        }
+
+        savedTransaction.used = true;
+        await savedTransaction.save();
+
+        // Populate the store and select necessary fields
+        await savedTransaction.populate({
+            path: 'store',
+            select: 'componentSkin'
+        });
+
+        const store = savedTransaction.store;
+        if (!store) {
+            return res.status(404).json({ message: 'Store not found' });
+        }
+
+        // Extract skin details from savedTransaction
+        const { skinType, name } = savedTransaction.skin;
+
+        let skinAdded = false; // Track if skin was added
+        // Update skinInventory in componentSkin
+        store.componentSkin.forEach(component => {
+            if (component.skinType === skinType) {
+                if (!component.skinInventory.includes(name)) {
+                    console.log("Adding skin to component:", component);
+                    component.skinInventory.push(name);
+                    skinAdded = true;
+                } else {
+                    console.log("Skin already exists in component:", component);
+                }
+            }
+        });
+
+        if (!skinAdded) {
+            return res.status(400).json({ message: 'Skin was not added. Possible duplicate or mismatch in skinType.' });
+        }
+
+        // Save the updated store
+        const updatedStore = await store.save();
+
+        // Return the updated store data
+        return res.status(200).json({ updatedStore, message: 'Skin update successful' });
+    } catch (error) {
+        // Handle any errors that occurred during the update process
+        console.error('Error updating skin:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the skin', error: error.message });
+    }
+};
+
+
 
 
 
@@ -435,5 +497,6 @@ module.exports = {
     deleteStore,
     getStoreByName,
     updateDashboardStore,
-    updateSubscription
+    updateSubscription,
+    updateSkin
 };

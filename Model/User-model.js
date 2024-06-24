@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
     name: {
         type: String,
         required: true,
-        index:true
+        index: true
     },
     email: {
         type: String,
@@ -32,10 +32,11 @@ const userSchema = new mongoose.Schema({
     banauRoles: {
         role: {
             type: String,
-            enum: ['Admin', 'Staff'],
-            default: 'staff'
+            enum: ['Admin', 'Manager', 'Delivery', 'Staff', ''],
+            default: ''
         }
     },
+
 
     roles: [{
         storeId: {

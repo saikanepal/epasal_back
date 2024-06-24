@@ -2,8 +2,10 @@ const Store = require('../Model/Store-model'); // Import the Store model
 const Product = require('../Model/Product-model'); // Import the Product model
 const User = require('../Model/User-model'); // Import the User model|
 const cloudinary = require("cloudinary").v2;
-const esewaTransaction = require('../Model/Esewa-model');const mongoose = require('mongoose');
-
+const esewaTransaction = require('../Model/Esewa-model'); const mongoose = require('mongoose');
+const TransactionLogs = require('../Model/logs-model');
+const moment = require('moment-timezone');
+const { calculateDate, getCurrentDateTime } = require('../utils/calculateDate');
 const createStore = async (req, res) => {
 
     const {
@@ -156,7 +158,7 @@ const getStore = async (req, res) => {
         await store.populate({
             path: 'products',
             options: { limit: limit }
-        })
+        });
 
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
@@ -302,8 +304,9 @@ const deleteStore = async (req, res) => {
 
 const updateDashboardStore = async (req, res) => {
     const { storeID } = req.params;
-    const newData = req.body;
-
+    const newData = req.body.updatedData;
+    const transactionLog = req.body.transactionLog;
+    console.log({ user: req.userData, newData, transactionLog });
     try {
         // Fetch the old store data to check for existing images
         const oldStore = await Store.findById(storeID);
@@ -346,6 +349,48 @@ const updateDashboardStore = async (req, res) => {
         return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
     }
 };
+const updateDashboardStoreAdminBanau = async (req, res) => {
+    const { storeID } = req.params;
+    console.log({ body: req.body });
+    let newData = req.body.updatedData;
+    let transactionLog = req.body.transactionLog;
+    let duration = req.body.duration;
+    try {
+        console.log((duration.duration !== ''));
+        if (duration.duration !== '') {
+            console.log('[+] Today:', getCurrentDateTime());
+            let exp = calculateDate(duration.duration);
+            console.log("[+] Expiry:", exp);
+            newData["subscriptionExpiry"] = new Date(exp);
+        }
+
+        console.log({ user: req.userData, newData, transactionLog, duration });
+        // Find the store by ID and update it with the new data
+        const updatedStore = await Store.findByIdAndUpdate(
+            storeID,
+            { $set: newData },
+            { new: true, runValidators: true }
+        );
+        // Check if the store was found and updated
+        if (!updatedStore) {
+            return res.status(404).json({ message: 'Store not found' });
+        }
+        const newTransactionData = new TransactionLogs(transactionLog);
+        const transaction = await newTransactionData.save();
+
+        console.log({ transaction });
+
+        // Add the new transaction log to the store's transactionLogs array
+        updatedStore.transactionLogs.push(transaction._id);
+        await updatedStore.save();
+        // Return the updated store data
+        return res.status(200).json({ updatedStore, message: 'Update successful' });
+    } catch (error) {
+        // Handle any errors that occurred during the update process
+        console.error('Error updating store:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
 
 const updateSubscription = async (req, res) => {
     const { transactionID } = req.params;
@@ -360,28 +405,30 @@ const updateSubscription = async (req, res) => {
         await savedTransaction.populate({
             path: 'store',
             select: 'subscriptionStatus subscriptionExpiry'
-        })
+        });
 
-        if(savedTransaction.used){
-            return res.status(401).json({message:'Payment Already Went Through'})
+        if (savedTransaction.used) {
+            return res.status(401).json({ message: 'Payment Already Went Through' });
         }
-        savedTransaction.used=true;
-   
+        savedTransaction.used = true;
+
         const store = savedTransaction.store;
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
 
+
         // Update store's subscription status
         store.subscriptionStatus = savedTransaction.subscription;
         await savedTransaction.save();
         // Calculate new subscriptionExpiry based on savedTransaction.duration
-        const currentDate = new Date();
+        moment().format('MMMM Do YYYY, h:mm:ss a');
         let newExpiryDate;
-
+        const expiryDate = store.subscription === 'Silver' ? currentDate : store.subscriptionExpiry;
+        console.log(expiryDate);
         switch (savedTransaction.duration) {
             case 'monthly':
-                if (store.subscriptionExpiry) {
+                if (expiryDate) {
                     newExpiryDate = new Date(store.subscriptionExpiry);
                     newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
                 } else {
@@ -389,7 +436,7 @@ const updateSubscription = async (req, res) => {
                 }
                 break;
             case 'quarterly':
-                if (store.subscriptionExpiry) {
+                if (expiryDate) {
                     newExpiryDate = new Date(store.subscriptionExpiry);
                     newExpiryDate.setMonth(newExpiryDate.getMonth() + 3);
                 } else {
@@ -397,7 +444,7 @@ const updateSubscription = async (req, res) => {
                 }
                 break;
             case 'yearly':
-                if (store.subscriptionExpiry) {
+                if (expiryDate) {
                     newExpiryDate = new Date(store.subscriptionExpiry);
                     newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
                 } else {
@@ -411,7 +458,7 @@ const updateSubscription = async (req, res) => {
 
         // Update store's subscriptionExpiry
         store.subscriptionExpiry = newExpiryDate;
-        store.payments.push(transactionID);
+        // store.payments.push(transactionID);
 
         // Save the updated store data
         const updatedStore = await store.save();
@@ -453,6 +500,7 @@ const getStoreByFilter = async (req, res) => {
                     { address: { $regex: term, $options: 'i' } },
                     { email: { $regex: term, $options: 'i' } },
                     { phoneNumber: { $regex: term, $options: 'i' } },
+                    { subscriptionStatus: { $regex: term, $options: 'i' } },
                     // Add more fields as needed
                 ];
 
@@ -514,6 +562,8 @@ const getStoreByFilter = async (req, res) => {
             pendingAmount: 1,
             revenueGenerated: 1,
             owner: 1,
+            subscriptionStatus: 1,
+            subscriptionExpiry: 1,
         })
             .populate('staff', 'name') // Populate the staff field with User documents, selecting only the name field
             .populate('owner', 'name') // Populate the owner field with User documents, selecting only the name field
@@ -551,5 +601,6 @@ module.exports = {
     getStoreByName,
     updateDashboardStore,
     updateSubscription,
-    getStoreByFilter
+    getStoreByFilter,
+    updateDashboardStoreAdminBanau
 };

@@ -5,7 +5,7 @@ const Order = require('./Order-model'); // Ensure to require the Order model if 
 const esewaTransactionSchema = require('./Esewa-model');
 
 const storeSchema = new mongoose.Schema({
-    name: { type: String, required: true, index: true }, // Indexed field
+    name: { type: String, required: true, index: true, unique: true }, // Indexed field
     logo: {
         logoUrl: { type: String },
         logoID: { type: String }
@@ -38,11 +38,11 @@ const storeSchema = new mongoose.Schema({
         instagram: { type: String },
         linkedin: { type: String }
     },
-    inventory:{type:Number,default:0},
+    inventory: { type: Number, default: 0 },
     revenueGenerated: { type: Number, default: 0 },
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
     payments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'esewaTransactionSchema' }], // subscrition / skin // 
-    customers: { type: Number , default:0 },
+    customers: { type: Number, default: 0 },
     dueAmount: { type: Number, default: 0 },
     pendingAmount: { type: Number, default: 0 },
     mostSoldItem: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
@@ -51,17 +51,18 @@ const storeSchema = new mongoose.Schema({
     footerDescription: { type: String },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     staff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    transactionLogs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'TransactionLogs' }],
     subscriptionStatus: {
         type: String,
         enum: ['Silver', 'Gold', 'Platinum'],
         default: 'Silver'
     },
-    logs:[{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
+    logs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
     subscriptionExpiry: {
         type: Date,
         default: () => new Date().setFullYear(new Date().getFullYear() + 1)  // Default to one year from current date
     },
-    
+
     activeTheme: { type: Number, default: 1 },
     componentTheme: { type: Object },
     secondaryBannerText: {
@@ -110,9 +111,9 @@ const storeSchema = new mongoose.Schema({
         }
     ],
     fonts: { type: Object },
-    expectedDeliveryTime:{type:String,default:'3 to 4 business days'},
-    expectedDeliveryPrice:{type:Number,default:100},
-    liveChatSource:{type:String,default:''},
+    expectedDeliveryTime: { type: String, default: '3 to 4 business days' },
+    expectedDeliveryPrice: { type: Number, default: 100 },
+    liveChatSource: { type: String, default: '' },
 }, { timestamps: true });
 
 storeSchema.pre('remove', async function (next) {

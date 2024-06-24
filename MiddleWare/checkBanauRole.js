@@ -13,7 +13,8 @@ const checkBanauRole = (requiredRole) => {
 
             // Define the role hierarchy
             const roleHierarchy = {
-                'Admin': 2,
+                'Admin': 3,
+                'Manager':2,
                 'Staff': 1
             };
 

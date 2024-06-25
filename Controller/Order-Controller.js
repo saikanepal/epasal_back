@@ -4,6 +4,7 @@ const Order = require('../Model/Order-model');
 const EsewaTransaction = require('../Model/Esewa-model');
 const mongoose = require('mongoose');
 const { response } = require('express');
+const crypto = require("crypto");
 
 
 
@@ -27,10 +28,10 @@ const createOrder = async (req, res) => {
                 landmark,
                 paymentMethod,
                 esewaTransactionID
-            } = req.body;
+            } = req.body.orderData;
 
             console.log('Received Order Request:', req.body);
-
+            console.log(cart);
             const storeID = req.params.storeID;
             console.log('Store ID:', storeID);
 
@@ -97,7 +98,8 @@ const createOrder = async (req, res) => {
                 address,
                 landmark,
                 paymentMethod,
-                esewaTransactionID
+                esewaTransactionID,
+                store: storeID
             });
 
             console.log('Creating New Order:', newOrder);
@@ -113,60 +115,81 @@ const createOrder = async (req, res) => {
             }
             store.orders.push(savedOrder._id);
 
-            // Update store revenue
-            store.revenueGenerated += totalPrice;
-            const dueAmountIncrease = 0.03 * totalPrice;
-            store.dueAmount += dueAmountIncrease;
-
-            // Check if the order phone number is unique
-            const isUniquePhoneNumber = await Order.countDocuments({ phoneNumber }).session(session) === 1;
-            if (isUniquePhoneNumber) {
-                store.customers += 1;
-            }
-
-            await store.save({ session });
-
-            console.log(`Order ${savedOrder._id} added to Store ${storeID} orders`);
-
-            // Update stock counts and sold quantities
-            const productSoldCounts = {};
-            await Promise.all(cart.map(async item => {
-                const product = await Product.findById(item.product).session(session);
-                if (!product) {
-                    throw new Error(`Product with ID ${item.product} not found`);
+            if (paymentMethod === 'CashOnDelivery' || paymentMethod === 'esewa') {
+                // Update store revenue and due/pending amounts
+                if (paymentMethod === 'CashOnDelivery') {
+                    store.revenueGenerated += totalPrice;
+                    const dueAmountIncrease = 0.03 * totalPrice;
+                    store.dueAmount += dueAmountIncrease;
+                } else if (paymentMethod === 'esewa') {
+                    store.revenueGenerated += totalPrice;
+                    const pendingAmountIncrease = 0.97 * totalPrice;
+                    store.pendingAmount += pendingAmountIncrease;
                 }
 
-                if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default') {
-                    // Default variant scenario
-                    product.inventory -= item.count;
-                    product.soldQuantity += item.count;
-                    product.revenueGenerated += item.count * item.price;
-                } else {
-                    // Non-default variant scenario
-                    const variant = product.variant.find(v => v.name === item.selectedVariant[0].name);
-                    const option = variant.options.find(o => o.name === item.selectedVariant[0].options.name);
-                    option.count -= item.count;
-                    product.soldQuantity += item.count;
-                    product.revenueGenerated += item.count * option.price;
+                // Check if the order phone number is unique
+                const isUniquePhoneNumber = await Order.countDocuments({ phoneNumber }).session(session) === 1;
+                if (isUniquePhoneNumber) {
+                    store.customers += 1;
                 }
 
-                await product.save({ session });
+                // Update stock counts and sold quantities
+                await Promise.all(cart.map(async item => {
+                    const product = await Product.findById(item.product).session(session);
+                    if (!product) {
+                        throw new Error(`Product with ID ${item.product} not found`);
+                    }
 
+                    if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default') {
+                        // Default variant scenario
+                        product.inventory -= item.count;
+                        product.soldQuantity += item.count;
+                        product.revenueGenerated += item.count * item.price;
+                    } else {
+                        // Non-default variant scenario
+                        const variant = product.variant.find(v => v.name === item.selectedVariant[0].name);
+                        const option = variant.options.find(o => o.name === item.selectedVariant[0].options.name);
+                        option.count -= item.count;
+                        product.soldQuantity += item.count;
+                        product.revenueGenerated += item.count * option.price;
+                    }
 
-                console.log(`Updated inventory for Product ${product._id}`);
-                const mostSoldProduct = await Product.findById(store.mostSoldItem);
-                if (!mostSoldProduct) {
-                    store.mostSoldItem = item.product;
-                } else if (mostSoldProduct && mostSoldProduct.soldQuantity < product.soldQuantity) {
-                    store.mostSoldProduct = item.product
-                }
+                    await product.save({ session });
+                    console.log(`Updated inventory for Product ${product._id}`);
+
+                    const mostSoldProduct = await Product.findById(store.mostSoldItem).session(session);
+                    if (!mostSoldProduct) {
+                        store.mostSoldItem = item.product;
+                    } else if (mostSoldProduct && mostSoldProduct.soldQuantity < product.soldQuantity) {
+                        store.mostSoldItem = item.product;
+                    }
+                }));
+
                 await store.save({ session });
 
-            }));
-
-
-            // Return the saved order
-            res.status(201).json(savedOrder);
+                // Return the saved order or formData based on payment method
+                if (paymentMethod === 'CashOnDelivery') {
+                    res.status(201).json(savedOrder);
+                } else if (paymentMethod === 'esewa') {
+                    const signature = createSignature(
+                        `total_amount=${savedOrder.totalPrice},transaction_uuid=${savedOrder._id},product_code=EPAYTEST`
+                    );
+                    const formData = {
+                        amount: totalPrice,
+                        failure_url: req.body.fail || "https://google.com",
+                        product_delivery_charge: "0",
+                        product_service_charge: "0",
+                        product_code: "EPAYTEST",
+                        signature: signature,
+                        signed_field_names: "total_amount,transaction_uuid,product_code",
+                        success_url: req.body.success || "http://localhost:3000/esewa/subscription",
+                        tax_amount: "0",
+                        total_amount: savedOrder.totalPrice,
+                        transaction_uuid: savedOrder._id,
+                    };
+                    res.json({ message: "Order Created Successfully", payment: savedOrder, formData });
+                }
+            }
         });
     } catch (error) {
         console.error('Error creating order:', error);
@@ -178,6 +201,18 @@ const createOrder = async (req, res) => {
 
 
 
+const createSignature = (message) => {
+
+    const secret = "8gBm/:&EnhH.1/q";
+    // Create an HMAC-SHA256 hash
+    const hmac = crypto.createHmac("sha256", secret);
+    hmac.update(message);
+
+    // Get the digest in base64 format
+    const hashInBase64 = hmac.digest("base64");
+    return hashInBase64;
+
+};
 
 
 const getOrdersByStore = async (req, res) => {
@@ -256,11 +291,10 @@ const getOrdersByStore = async (req, res) => {
     }
 };
 
-
 const updateOrder = async (req, res) => {
-    const { orderId, storeID } = req.params;
-    const { status, deliveryCode } = req.body;
-
+    const { orderId } = req.params;
+    const { status, deliveryCode, fullName, address, landmark, phoneNumber } = req.body;
+    console.log(req.params);
     const session = await mongoose.startSession();
     session.startTransaction();
 
@@ -277,7 +311,8 @@ const updateOrder = async (req, res) => {
             await session.abortTransaction();
             return res.status(404).json({ message: 'Order not found' });
         }
-
+        const storeID = req.params.storeID || order.store;
+        console.log(storeID);
         // Check if order is already delivered
         if (order.status === 'Delivered') {
             await session.abortTransaction();
@@ -285,7 +320,7 @@ const updateOrder = async (req, res) => {
         }
 
         // Prepare the update object including deliveryCode if provided
-        const updateData = { status };
+        const updateData = { status, fullName, address, landmark, phoneNumber };
         if (deliveryCode) {
             updateData.deliveryCode = deliveryCode;
         }
@@ -308,7 +343,7 @@ const updateOrder = async (req, res) => {
             store.dueAmount -= dueAmountDecrease;
 
             // Check if the order phone number is unique and adjust customer count
-            const isUniquePhoneNumber = await Order.countDocuments({ phoneNumber: order.phoneNumber }).session(session) === 1;
+            const isUniquePhoneNumber = (await Order.countDocuments({ phoneNumber: order.phoneNumber }).session(session)) === 1;
             if (isUniquePhoneNumber) {
                 store.customers -= 1;
             }
@@ -345,12 +380,13 @@ const updateOrder = async (req, res) => {
                         store.mostSoldItem = product._id;
                     }
                 }
-
-                await store.save({ session });
             }));
+
+            // Save the store document after all product updates
+            await store.save({ session });
         }
 
-        // Update the order status in the database
+        // Update the order status and other fields in the database
         const updatedOrder = await Order.findByIdAndUpdate(
             orderId,
             updateData,
@@ -367,6 +403,7 @@ const updateOrder = async (req, res) => {
         session.endSession();
     }
 };
+
 
 
 

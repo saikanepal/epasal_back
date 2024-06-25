@@ -7,7 +7,7 @@ const orderSchema = new mongoose.Schema({
     fullName: { type: String, required: true },
     phoneNumber: { type: String, required: true, index: true },
     email: { type: String, match: /.+\@.+\..+/ },
-
+    store: { type: mongoose.Schema.Types.ObjectId, ref: 'Store' },
     // Order status
     status: {
         type: String,

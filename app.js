@@ -10,6 +10,8 @@ const productRoute=require('./Routes/Product-Routes');
 const reviewRoute=require("./Routes/Review-Route");
 const orderRoute=require("./Routes/Order-Route");
 const paymentRoute = require("./Routes/Payment-Route");
+
+const Store = require("./Model/Store-model");
 const app = express();
 const PORT = process.env.PORT || 8000;
 

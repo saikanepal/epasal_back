@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema({
     banauRoles: {
         role: {
             type: String,
-            enum: ['Owner', 'Admin', 'Staff', 'Delivery'],
+            enum: ['Owner', 'Admin', 'Staff', 'Delivery',''],
             default: ''
         }
     },

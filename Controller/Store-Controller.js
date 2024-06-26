@@ -516,11 +516,12 @@ const updateSubscription = async (req, res) => {
             select: 'subscriptionStatus subscriptionExpiry'
         })
 
+
+        console.log("transaction record", savedTransaction);
         if (savedTransaction.used) {
             return res.status(401).json({ message: 'Payment Already Went Through' })
         }
         savedTransaction.used = true;
-
         const store = savedTransaction.store;
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
@@ -565,7 +566,7 @@ const updateSubscription = async (req, res) => {
 
         // Update store's subscriptionExpiry
         store.subscriptionExpiry = newExpiryDate;
-        store.payments.push(transactionID);
+        store.payments.push(savedTransaction._id);
 
         // Save the updated store data
         const updatedStore = await store.save();

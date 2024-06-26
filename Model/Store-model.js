@@ -46,7 +46,7 @@ const storeSchema = new mongoose.Schema({
                 component: { type: String },
                 skinType: { type: String },
                 activeSkin: { type: String },
-                skinInventory: [{ type: String ,unique:true}],
+                skinInventory: [{ type: String, unique: true }],
             }
         ],
         default: [
@@ -105,7 +105,7 @@ const storeSchema = new mongoose.Schema({
                 skinInventory: ["default"]
             }
         ]
-    },    
+    },
     inventory: { type: Number, default: 0 },
     revenueGenerated: { type: Number, default: 0 },
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],

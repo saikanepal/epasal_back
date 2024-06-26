@@ -22,6 +22,10 @@ router.use(checkAuth);
 //routes to get logged in User
 router.get('/getLoggedInUser', userController.getLoggedInUser);
 
+router.get('/getLoggedInUserDetails', userController.getLoggedInUserDetails);
+//route to update the user data
+router.put('/updateUserDetails', userController.updateUserDetails);
+
 // Routes with role-based access control
 router.put('/ownerUpdate', checkRole('Owner'), userController.updateUserRoleByOwner);
 router.put('/adminUpdate', checkRole('Admin'), userController.updateUserRoleByAdmin);

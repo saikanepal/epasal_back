@@ -174,6 +174,22 @@ const getLoggedInUser = async (req, res) => {
     }
 };
 
+const getLoggedInUserDetails = async (req, res) => {
+    try {
+        const userId = req.userData.userID;
+        console.log({ userId });
+        const user = await User.findById(userId).select('name email'); // Select only name and email fields
+        if (!user) {
+            throw new Error('User not found');
+        }
+        return res.status(200).json({ message: 'User details fetched successfully', user: { name: user.name, email: user.email } });
+    } catch (error) {
+        console.error("Error fetching user details by ID:", error);
+        return res.status(404).json({ message: error.message });
+    }
+};
+
+
 
 
 const addEmployee = async (req, res) => {
@@ -361,6 +377,34 @@ const deleteEmployee = async (req, res) => {
     }
 };
 
+const updateUserDetails = async (req, res) => {
+    try {
+        const userId = req.userData.userID;
+        const { name, email } = req.body;
+
+        // Basic validation
+        if (!name || !email) {
+            return res.status(400).json({ message: 'Name and email are required' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        // Update user details
+        user.name = name;
+        user.email = email;
+        await user.save();
+
+        return res.status(200).json({ message: 'User details updated successfully', user: { name: user.name, email: user.email } });
+    } catch (error) {
+        console.error("Error updating user details:", error);
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+
 
 // Export the functions
-module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee, getLoggedInUser };
+module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee, getLoggedInUser, getLoggedInUserDetails, updateUserDetails };

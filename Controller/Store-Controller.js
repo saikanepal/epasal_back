@@ -2,10 +2,11 @@ const Store = require('../Model/Store-model'); // Import the Store model
 const Product = require('../Model/Product-model'); // Import the Product model
 const User = require('../Model/User-model'); // Import the User model|
 const cloudinary = require("cloudinary").v2;
-const esewaTransaction = require('../Model/Esewa-model'); const mongoose = require('mongoose');
+const esewaTransaction = require('../Model/Esewa-model');
+const mongoose = require('mongoose');
 const TransactionLogs = require('../Model/logs-model');
 const moment = require('moment-timezone');
-const { calculateDate, getCurrentDateTime, calculateDatev1 } = require('../utils/calculateDate');const mongoose = require('mongoose');
+const { calculateDate, getCurrentDateTime, calculateDatev1 } = require('../utils/calculateDate');
 
 const createStore = async (req, res) => {
 
@@ -42,9 +43,9 @@ const createStore = async (req, res) => {
                     reqname
                 ]
             }
-        })
+        });
         if (dataExists) {
-            console.log("already exist")
+            console.log("already exist");
             return res.status(400).json({ message: "Store already exists" });
         }
         let savedProducts = [];
@@ -157,7 +158,7 @@ const getStore = async (req, res) => {
                     storeName
                 ]
             }
-        })
+        });
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
@@ -611,8 +612,8 @@ const updateSubscription = async (req, res) => {
             select: 'subscriptionStatus subscriptionExpiry'
         });
 
-        if  (savedTransaction.used)  {
-            return res.status(401).json({  message:  'Payment Already Went Through'  });
+        if (savedTransaction.used) {
+            return res.status(401).json({ message: 'Payment Already Went Through' });
         }
         savedTransaction.used = true;
 

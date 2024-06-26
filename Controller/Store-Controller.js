@@ -5,7 +5,8 @@ const cloudinary = require("cloudinary").v2;
 const esewaTransaction = require('../Model/Esewa-model'); const mongoose = require('mongoose');
 const TransactionLogs = require('../Model/logs-model');
 const moment = require('moment-timezone');
-const { calculateDate, getCurrentDateTime, calculateDatev1 } = require('../utils/calculateDate');
+const { calculateDate, getCurrentDateTime, calculateDatev1 } = require('../utils/calculateDate');const mongoose = require('mongoose');
+
 const createStore = async (req, res) => {
 
     const {
@@ -33,8 +34,17 @@ const createStore = async (req, res) => {
     } = req.body.store;
     try {
         // Create products if products data is provided
-        const dataExists = await Store.findOne({ name: new RegExp(`^${name.trim()}$`, 'i') });
+        const reqname = req.body.store.name.trim().replace(/\s+/g, '').toLowerCase(); // Remove all spaces and convert to lowercase
+        const dataExists = await Store.findOne({
+            $expr: {
+                $eq: [
+                    { $toLower: { $replaceAll: { input: "$name", find: " ", replacement: "" } } },
+                    reqname
+                ]
+            }
+        })
         if (dataExists) {
+            console.log("already exist")
             return res.status(400).json({ message: "Store already exists" });
         }
         let savedProducts = [];
@@ -139,7 +149,15 @@ const createStore = async (req, res) => {
 const getStore = async (req, res) => {
     try {
         // Retrieve store based on case-insensitive search by store name
-        const store = await Store.findOne({ name: { $regex: new RegExp('^' + req.params.storeName + '$', 'i') } });
+        const storeName = req.params.storeName.trim().replace(/\s+/g, '').toLowerCase(); // Remove all spaces and convert to lowercase
+        const store = await Store.findOne({
+            $expr: {
+                $eq: [
+                    { $toLower: { $replaceAll: { input: "$name", find: " ", replacement: "" } } },
+                    storeName
+                ]
+            }
+        })
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
@@ -171,8 +189,15 @@ const getStore = async (req, res) => {
 const getStoreByName = async (req, res) => {
     try {
         // Retrieve store with all products and staff based on storeName
-        const storeName = req.params.storeName.trim();
-        const store = await Store.findOne({ name: { $regex: new RegExp(`^${storeName}$`, 'i') } }).populate('owner');
+        const storeName = req.params.storeName.trim().replace(/\s+/g, '').toLowerCase(); // Remove all spaces and convert to lowercase
+        const store = await Store.findOne({
+            $expr: {
+                $eq: [
+                    { $toLower: { $replaceAll: { input: "$name", find: " ", replacement: "" } } },
+                    storeName
+                ]
+            }
+        }).populate('owner');
 
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
@@ -201,6 +226,137 @@ const getStoreByName = async (req, res) => {
     }
 };
 
+const getStoreStats = async (req, res) => {
+    try {
+        console.log(req.query);
+        const { storeId, period } = req.query;
+
+        if (!storeId || !period) {
+            return res.status(400).json({ message: 'Store ID and period are required' });
+        }
+
+        const store = await Store.findById(storeId);
+
+        if (!store) {
+            return res.status(404).json({ message: 'Store not found' });
+        }
+
+        let data = [];
+        const now = new Date();
+
+        switch (period) {
+            case 'day':
+                // Group by hour for the last 24 hours
+                data = await Store.aggregate([
+                    { $match: { _id: new mongoose.Types.ObjectId(storeId) } },
+                    {
+                        $project: {
+                            day: { $dayOfMonth: '$createdAt' },
+                            hour: { $hour: '$createdAt' },
+                            revenueGenerated: 1,
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: { day: '$day', hour: '$hour' },
+                            totalRevenue: { $sum: '$revenueGenerated' },
+                        }
+                    },
+                    { $sort: { '_id.hour': 1 } }
+                ]).exec();
+                // Format data for frontend
+                data = data.map(item => ({
+                    periodKey: `Hour ${item._id.hour}`,
+                    totalRevenue: item.totalRevenue
+                }));
+                break;
+
+            case 'week':
+                // Group by day for the last 7 days
+                data = await Store.aggregate([
+                    { $match: { _id: new mongoose.Types.ObjectId(storeId) } },
+                    {
+                        $project: {
+                            dayOfWeek: { $dayOfWeek: '$createdAt' },
+                            revenueGenerated: 1,
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: { dayOfWeek: '$dayOfWeek' },
+                            totalRevenue: { $sum: '$revenueGenerated' },
+                        }
+                    },
+                    { $sort: { '_id.dayOfWeek': 1 } }
+                ]).exec();
+                // Format data for frontend
+                data = data.map(item => ({
+                    periodKey: `Day ${item._id.dayOfWeek}`,
+                    totalRevenue: item.totalRevenue
+                }));
+                break;
+
+            case 'month':
+                // Group by week for the last 4 weeks
+                data = await Store.aggregate([
+                    { $match: { _id: new mongoose.Types.ObjectId(storeId) } },
+                    {
+                        $project: {
+                            week: { $week: '$createdAt' },
+                            revenueGenerated: 1,
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: { week: '$week' },
+                            totalRevenue: { $sum: '$revenueGenerated' },
+                        }
+                    },
+                    { $sort: { '_id.week': 1 } }
+                ]).exec();
+                // Format data for frontend
+                data = data.map(item => ({
+                    periodKey: `Week ${item._id.week}`,
+                    totalRevenue: item.totalRevenue
+                }));
+                break;
+
+            case 'year':
+                // Group by month for the last 12 months
+                data = await Store.aggregate([
+                    { $match: { _id: new mongoose.Types.ObjectId(storeId) } },
+                    {
+                        $project: {
+                            month: { $month: '$createdAt' },
+                            revenueGenerated: 1,
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: { month: '$month' },
+                            totalRevenue: { $sum: '$revenueGenerated' },
+                        }
+                    },
+                    { $sort: { '_id.month': 1 } }
+                ]).exec();
+                // Format data for frontend
+                data = data.map(item => ({
+                    periodKey: `Month ${item._id.month}`,
+                    totalRevenue: item.totalRevenue
+                }));
+                break;
+
+            default:
+                return res.status(400).json({ message: 'Invalid period specified' });
+        }
+
+        console.log(data);
+        res.status(200).json({ orders: data });
+    } catch (error) {
+        console.error('Error fetching store stats:', error);
+        res.status(500).json({ message: 'Failed to fetch store stats' });
+    }
+};
 
 
 const getActiveTheme = async (req, res) => {
@@ -455,8 +611,8 @@ const updateSubscription = async (req, res) => {
             select: 'subscriptionStatus subscriptionExpiry'
         });
 
-        if (savedTransaction.used) {
-            return res.status(401).json({ message: 'Payment Already Went Through' });
+        if  (savedTransaction.used)  {
+            return res.status(401).json({  message:  'Payment Already Went Through'  });
         }
         savedTransaction.used = true;
 
@@ -519,6 +675,68 @@ const updateSubscription = async (req, res) => {
         return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
     }
 };
+
+const updateSkin = async (req, res) => {
+    const { transactionID } = req.params;
+    try {
+        // Fetch the transaction data to check for existing details
+        const savedTransaction = await esewaTransaction.findById(transactionID);
+        if (!savedTransaction) {
+            return res.status(404).json({ message: 'Transaction not found' });
+        }
+
+        // Check if the transaction has already been used
+        if (savedTransaction.used) {
+            return res.status(401).json({ message: 'Payment has already been processed' });
+        }
+
+        savedTransaction.used = true;
+        await savedTransaction.save();
+
+        // Populate the store and select necessary fields
+        await savedTransaction.populate({
+            path: 'store',
+            select: 'componentSkin'
+        });
+
+        const store = savedTransaction.store;
+        if (!store) {
+            return res.status(404).json({ message: 'Store not found' });
+        }
+
+        // Extract skin details from savedTransaction
+        const { skinType, name } = savedTransaction.skin;
+
+        let skinAdded = false; // Track if skin was added
+        // Update skinInventory in componentSkin
+        store.componentSkin.forEach(component => {
+            if (component.skinType === skinType) {
+                if (!component.skinInventory.includes(name)) {
+                    console.log("Adding skin to component:", component);
+                    component.skinInventory.push(name);
+                    skinAdded = true;
+                } else {
+                    console.log("Skin already exists in component:", component);
+                }
+            }
+        });
+
+        if (!skinAdded) {
+            return res.status(400).json({ message: 'Skin was not added. Possible duplicate or mismatch in skinType.' });
+        }
+
+        // Save the updated store
+        const updatedStore = await store.save();
+
+        // Return the updated store data
+        return res.status(200).json({ updatedStore, message: 'Skin update successful' });
+    } catch (error) {
+        // Handle any errors that occurred during the update process
+        console.error('Error updating skin:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the skin', error: error.message });
+    }
+};
+
 
 
 
@@ -660,6 +878,8 @@ module.exports = {
     getStoreByName,
     updateDashboardStore,
     updateSubscription,
+    updateSkin,
+    getStoreStats,
     getStoreByFilter,
     updateDashboardStoreAdminBanau,
     payStoreNow,

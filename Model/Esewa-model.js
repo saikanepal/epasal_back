@@ -12,9 +12,13 @@ const esewaTransactionSchema = new mongoose.Schema(
             type: Number,
             required: true,
         },
+        skin:{
+            skinType:{type:String},
+            name:{type:String},
+        },
         subscription: {
             type: String,
-            default: 'Silver'
+            default: ''
         },
         store: { type: mongoose.Schema.Types.ObjectId, ref: 'Store' },
         status: {
@@ -25,7 +29,7 @@ const esewaTransactionSchema = new mongoose.Schema(
         },
         duration: {
             type: String,
-            default: 'monthly',
+            default: '',
         },
         used: {
             type: Boolean,

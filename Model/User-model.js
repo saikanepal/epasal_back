@@ -28,15 +28,14 @@ const userSchema = new mongoose.Schema({
     },
     stores: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Store' }],
 
-    isBanauAdmin: { type: Boolean, default: false },
+    isBanauAdmin: { type: Boolean, default: false, index: true }, //staff or employees for banau
     banauRoles: {
         role: {
             type: String,
-            enum: ['Admin', 'Manager', 'Delivery', 'Staff', ''],
+            enum: ['Owner', 'Admin', 'Staff', 'Delivery', 'Manager', ''],
             default: ''
         }
     },
-
 
     roles: [{
         storeId: {

@@ -22,13 +22,13 @@ const createPayment = async (req, res) => {
         );
         const formData = {
             amount: savedEsewaTransaction.amount,
-            failure_url: "https://google.com",
+            failure_url: req.body.fail || "https://google.com",
             product_delivery_charge: "0",
             product_service_charge: "0",
             product_code: "EPAYTEST",
             signature: signature,
             signed_field_names: "total_amount,transaction_uuid,product_code",
-            success_url: "http://localhost:3000/esewa/subscription",
+            success_url: req.body.success || "http://localhost:3000/esewa/subscription",
             tax_amount: "0",
             total_amount: savedEsewaTransaction.amount,
             transaction_uuid: savedEsewaTransaction._id,

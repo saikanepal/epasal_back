@@ -10,6 +10,8 @@ const productRoute = require('./Routes/Product-Routes');
 const reviewRoute = require("./Routes/Review-Route");
 const orderRoute = require("./Routes/Order-Route");
 const paymentRoute = require("./Routes/Payment-Route");
+
+const Store = require("./Model/Store-model");
 const logsRoute = require("./Routes/Logs-Route");
 const banauRoute = require("./Routes/Banau-Route");
 const { calculateDate, getCurrentDateTime } = require('./utils/calculateDate');

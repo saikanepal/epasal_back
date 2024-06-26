@@ -38,6 +38,74 @@ const storeSchema = new mongoose.Schema({
         instagram: { type: String },
         linkedin: { type: String }
     },
+
+
+    componentSkin: {
+        type: [
+            {
+                component: { type: String },
+                skinType: { type: String },
+                activeSkin: { type: String },
+                skinInventory: [{ type: String ,unique:true}],
+            }
+        ],
+        default: [
+            {
+                component: "Navbar",
+                skinType: "Navbar",
+                activeSkin: "default",
+                skinInventory: ["default"]
+            },
+            {
+                component: "Product1",
+                skinType: "Card",
+                activeSkin: "default",
+                skinInventory: ["default"]
+            },
+            {
+                component: "Product2",
+                skinType: "Card",
+                activeSkin: "default",
+                skinInventory: ["default"]
+            },
+            {
+                component: "Product3",
+                skinType: "Card",
+                activeSkin: "default",
+                skinInventory: ["default"]
+            },
+            {
+                component: "Banner1",
+                skinType: "Banner",
+                activeSkin: "default",
+                skinInventory: ["default"]
+            },
+            {
+                component: "Banner2",
+                skinType: "Banner",
+                activeSkin: "default",
+                skinInventory: ["default"]
+            },
+            {
+                component: "Banner3",
+                skinType: "Banner",
+                activeSkin: "default",
+                skinInventory: ["default"]
+            },
+            {
+                component: "Footer",
+                skinType: "Footer",
+                activeSkin: "default",
+                skinInventory: ["default"]
+            },
+            {
+                component: "Background",
+                skinType: "Background",
+                activeSkin: "default",
+                skinInventory: ["default"]
+            }
+        ]
+    },    
     inventory: { type: Number, default: 0 },
     revenueGenerated: { type: Number, default: 0 },
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
@@ -57,14 +125,13 @@ const storeSchema = new mongoose.Schema({
         enum: ['Silver', 'Gold', 'Platinum'],
         default: 'Silver'
     },
-    logs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
+    logs:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
     subscriptionExpiry: {
         type: Date,
         default: null  // Default to one year from current date
     },
 
     activeTheme: { type: Number, default: 1 },
-    componentTheme: { type: Object },
     secondaryBannerText: {
         heading: { type: String, default: "" },
         paragraph: { type: String, default: "" }

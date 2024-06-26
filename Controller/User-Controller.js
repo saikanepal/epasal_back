@@ -74,7 +74,7 @@ const signIn = async (req, res) => {
             user.verificationCode = verificationCode;
             await user.save();
             sendVerificationEmail(email, verificationCode); // Resend verification email
-            throw { status: 403, message: 'User not verified. Verification code resent.' };
+            res.status(403).json({message:"User not verified"});
         }
 
         //token for local storage
@@ -380,7 +380,7 @@ const deleteEmployee = async (req, res) => {
 const updateUserDetails = async (req, res) => {
     try {
         const userId = req.userData.userID;
-        const { name, email } = req.body;
+        const { name, email, oldPassword, newPassword } = req.body;
 
         // Basic validation
         if (!name || !email) {
@@ -392,10 +392,33 @@ const updateUserDetails = async (req, res) => {
             throw new Error('User not found');
         }
 
-        // Update user details
+        // Handle email change verification
+        if (user.email !== email) {
+            user.email = email;
+            user.isVerified = false; // Set isVerified to false when email changes
+        }
+
+        // Update user details (name and email)
         user.name = name;
-        user.email = email;
+
+
+
+        // Handle password update if newPassword is provided
+        if (newPassword) {
+            // Validate old password
+            const passwordMatch = await bcrypt.compare(oldPassword, user.password);
+            if (!passwordMatch) {
+                return res.status(400).json({ message: 'Invalid old password' });
+            }
+
+            // Encrypt the new password
+            const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+            user.password = hashedPassword;
+        }
+
+        // Save updated user details
         await user.save();
+        console.log(user);
 
         return res.status(200).json({ message: 'User details updated successfully', user: { name: user.name, email: user.email } });
     } catch (error) {
@@ -403,6 +426,8 @@ const updateUserDetails = async (req, res) => {
         return res.status(500).json({ message: error.message });
     }
 };
+
+
 
 
 

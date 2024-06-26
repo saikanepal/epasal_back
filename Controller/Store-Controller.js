@@ -516,12 +516,14 @@ const updateSubscription = async (req, res) => {
             select: 'subscriptionStatus subscriptionExpiry'
         })
 
+        console.log("Transaction record:", savedTransaction);
 
-        console.log("transaction record", savedTransaction);
         if (savedTransaction.used) {
-            return res.status(401).json({ message: 'Payment Already Went Through' })
+            return res.status(401).json({ message: 'Payment already processed' });
         }
+
         savedTransaction.used = true;
+
         const store = savedTransaction.store;
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
@@ -529,44 +531,29 @@ const updateSubscription = async (req, res) => {
 
         // Update store's subscription status
         store.subscriptionStatus = savedTransaction.subscription;
-        await savedTransaction.save();
-        // Calculate new subscriptionExpiry based on savedTransaction.duration
-        const currentDate = new Date();
+
+        // Set new subscriptionExpiry based on savedTransaction.duration or default to today's date
         let newExpiryDate;
 
         switch (savedTransaction.duration) {
             case 'monthly':
-                if (store.subscriptionExpiry) {
-                    newExpiryDate = new Date(store.subscriptionExpiry);
-                    newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
-                } else {
-                    return res.status(400).json({ message: 'Previous subscription expiry not found' });
-                }
+                newExpiryDate = store.subscriptionExpiry ? new Date(store.subscriptionExpiry) : new Date();
+                newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
                 break;
             case 'quarterly':
-                if (store.subscriptionExpiry) {
-                    newExpiryDate = new Date(store.subscriptionExpiry);
-                    newExpiryDate.setMonth(newExpiryDate.getMonth() + 3);
-                } else {
-                    return res.status(400).json({ message: 'Previous subscription expiry not found' });
-                }
+                newExpiryDate = store.subscriptionExpiry ? new Date(store.subscriptionExpiry) : new Date();
+                newExpiryDate.setMonth(newExpiryDate.getMonth() + 3);
                 break;
             case 'yearly':
-                if (store.subscriptionExpiry) {
-                    newExpiryDate = new Date(store.subscriptionExpiry);
-                    newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-                } else {
-                    return res.status(400).json({ message: 'Previous subscription expiry not found' });
-                }
+                newExpiryDate = store.subscriptionExpiry ? new Date(store.subscriptionExpiry) : new Date();
+                newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
                 break;
             default:
                 return res.status(400).json({ message: 'Invalid duration type' });
         }
 
-
         // Update store's subscriptionExpiry
         store.subscriptionExpiry = newExpiryDate;
-        store.payments.push(savedTransaction._id);
 
         // Save the updated store data
         const updatedStore = await store.save();
@@ -579,6 +566,7 @@ const updateSubscription = async (req, res) => {
         return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
     }
 };
+
 
 const updateSkin = async (req, res) => {
     const { transactionID } = req.params;

@@ -301,14 +301,22 @@ const addProduct = async (req, res) => {
   const getStoreProducts= async (req, res) => {
    
     const { storeName} = req.params;
-    console.log(storeName)
+    console.log("store name is ",storeName)
     try {
-      const store = await Store.find({ name: { $regex: new RegExp(storeName, 'i') } }).populate('products');
+      const storeName = req.params.storeName.trim().replace(/\s+/g, '').toLowerCase(); // Remove all spaces and convert to lowercase
+      const store = await Store.findOne({
+          $expr: {
+              $eq: [
+                  { $toLower: { $replaceAll: { input: "$name", find: " ", replacement: "" } } },
+                  storeName
+              ]
+          }
+      }).populate('products').select('products color logo name')
       if (!store) {
         return res.status(404).json({ success: false, message: "Store not found" });
       }
-      console.log(store)
-      return res.status(200).json({ success: true, products: store[0].products ,color: store[0].color});
+      console.log("store is",store)
+      return res.status(200).json({ success: true, products: store.products ,color: store.color ,store});
     } catch (err) {
       console.error(err);
       return res.status(400).json({ success: false, message: "Error in getting products" });

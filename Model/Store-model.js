@@ -60,7 +60,7 @@ const storeSchema = new mongoose.Schema({
     logs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
     subscriptionExpiry: {
         type: Date,
-        default: () => new Date().setFullYear(new Date().getFullYear() + 1)  // Default to one year from current date
+        default: null  // Default to one year from current date
     },
 
     activeTheme: { type: Number, default: 1 },

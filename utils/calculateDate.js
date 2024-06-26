@@ -18,27 +18,34 @@ function calculateDate(period, fromDate = moment().utcOffset('+0545')) {
     }
     return date.format();
 }
+
+
+// Function to calculate the date based on the period and start date
+function calculateDatev1(period, fromDate = moment().utcOffset('+0545')) {
+    let date = moment(fromDate);
+    switch (period) {
+        case 'Monthly':
+            date = date.add(1, 'months');
+            break;
+        case 'Quarterly':
+            date = date.add(3, 'months');
+            break;
+        case 'Yearly':
+            date = date.add(1, 'years');
+            break;
+        default:
+            throw new Error('Invalid period. Use "monthly", "quarterly", or "yearly".');
+    }
+    return date.format();
+}
 function getCurrentDateTime() {
     const nepalTimeNow = moment().utcOffset('+0545');
     return nepalTimeNow.format();
 }
 module.exports = {
     calculateDate,
+    calculateDatev1,
     getCurrentDateTime,
+
 };
 
-// // Example usage
-// const nepalTimeNow = moment().utcOffset('+0545');
-// console.log('Current Nepal Time:', nepalTimeNow.format());
-
-// const monthlyDate = calculateDate('monthly');
-// console.log('Monthly Date:', monthlyDate);
-
-// const quarterlyDate = calculateDate('quarterly');
-// console.log('Quarterly Date:', quarterlyDate);
-
-// const yearlyDate = calculateDate('yearly');
-// console.log('Yearly Date:', yearlyDate);
-
-// const invalidPeriodDate = calculateDate('weekly');
-// console.log('Invalid Period Date:', invalidPeriodDate);

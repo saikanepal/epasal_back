@@ -74,7 +74,7 @@ const signIn = async (req, res) => {
             user.verificationCode = verificationCode;
             await user.save();
             sendVerificationEmail(email, verificationCode); // Resend verification email
-            throw { status: 403, message: 'User not verified. Verification code resent.' };
+            res.status(403).json({message:"User not verified"});
         }
 
         //token for local storage
@@ -174,6 +174,22 @@ const getLoggedInUser = async (req, res) => {
     }
 };
 
+const getLoggedInUserDetails = async (req, res) => {
+    try {
+        const userId = req.userData.userID;
+        console.log({ userId });
+        const user = await User.findById(userId).select('name email'); // Select only name and email fields
+        if (!user) {
+            throw new Error('User not found');
+        }
+        return res.status(200).json({ message: 'User details fetched successfully', user: { name: user.name, email: user.email } });
+    } catch (error) {
+        console.error("Error fetching user details by ID:", error);
+        return res.status(404).json({ message: error.message });
+    }
+};
+
+
 
 
 const addEmployee = async (req, res) => {
@@ -211,7 +227,7 @@ const addEmployee = async (req, res) => {
         if (!validRoles.includes(newRole)) {
             throw { status: 400, message: 'Invalid role' };
         }
-        
+
         // Check if the user already has a role for the specified store
         const existingRole = user.roles.find(role => role.storeId.toString() === storeId);
         if (existingRole) {
@@ -224,12 +240,12 @@ const addEmployee = async (req, res) => {
         // Add a new role entry
         user.roles.push({ storeId, role: newRole });
 
-       
+
 
         // Add user ID to the store's staff array
         store.staff.push(user._id);
 
-         // Save the user with the new role
+        // Save the user with the new role
         await user.save();
         await store.save();
 
@@ -361,6 +377,59 @@ const deleteEmployee = async (req, res) => {
     }
 };
 
+const updateUserDetails = async (req, res) => {
+    try {
+        const userId = req.userData.userID;
+        const { name, email, oldPassword, newPassword } = req.body;
+
+        // Basic validation
+        if (!name || !email) {
+            return res.status(400).json({ message: 'Name and email are required' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        // Handle email change verification
+        if (user.email !== email) {
+            user.email = email;
+            user.isVerified = false; // Set isVerified to false when email changes
+        }
+
+        // Update user details (name and email)
+        user.name = name;
+
+
+
+        // Handle password update if newPassword is provided
+        if (newPassword) {
+            // Validate old password
+            const passwordMatch = await bcrypt.compare(oldPassword, user.password);
+            if (!passwordMatch) {
+                return res.status(400).json({ message: 'Invalid old password' });
+            }
+
+            // Encrypt the new password
+            const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+            user.password = hashedPassword;
+        }
+
+        // Save updated user details
+        await user.save();
+        console.log(user);
+
+        return res.status(200).json({ message: 'User details updated successfully', user: { name: user.name, email: user.email } });
+    } catch (error) {
+        console.error("Error updating user details:", error);
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+
+
+
 
 // Export the functions
-module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee, getLoggedInUser };
+module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee, getLoggedInUser, getLoggedInUserDetails, updateUserDetails };

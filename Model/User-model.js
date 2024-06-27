@@ -4,7 +4,8 @@ const Store = require('./Store-model');
 const userSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: true
+        required: true,
+        index: true
     },
     email: {
         type: String,
@@ -31,7 +32,7 @@ const userSchema = new mongoose.Schema({
     banauRoles: {
         role: {
             type: String,
-            enum: ['Owner', 'Admin', 'Staff', 'Delivery'],
+            enum: ['Owner', 'Admin', 'Staff', 'Delivery', 'Manager', ''],
             default: ''
         }
     },

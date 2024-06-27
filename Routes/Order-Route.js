@@ -20,6 +20,7 @@ router.get('/get/:storeID', checkRole('Delivery') ,orderController.getOrdersBySt
 // 
 // Route to update an existing order
 router.put('/update/:storeID/:orderId',checkRole('Delivery') ,orderController.updateOrder);
+router.put('/update/:orderId',orderController.updateOrder);
 
 // Route to delete an existing order
 

@@ -11,6 +11,7 @@ const crypto = require("crypto");
 
 const createOrder = async (req, res) => {
     const session = await mongoose.startSession();
+
     try {
         await session.withTransaction(async () => {
             const {
@@ -29,12 +30,8 @@ const createOrder = async (req, res) => {
                 paymentMethod,
                 esewaTransactionID
             } = req.body.orderData;
-
-            console.log('Received Order Request:', req.body);
-            console.log(cart);
+            console.log("cart is", cart);
             const storeID = req.params.storeID;
-            console.log('Store ID:', storeID);
-
             // Validate required fields
             if (!fullName || !phoneNumber || !cart || cart.length === 0 || !price || !totalPrice) {
                 throw new Error('Missing required fields');
@@ -102,11 +99,9 @@ const createOrder = async (req, res) => {
                 store: storeID
             });
 
-            console.log('Creating New Order:', newOrder);
-
+            console.log(req.body);
             // Save order to the database
             const savedOrder = await newOrder.save({ session });
-            console.log('Saved Order:', savedOrder);
 
             // Add the order to the store's orders array
             const store = await Store.findById(storeID).session(session);
@@ -116,6 +111,7 @@ const createOrder = async (req, res) => {
             store.orders.push(savedOrder._id);
 
             if (paymentMethod === 'CashOnDelivery' || paymentMethod === 'esewa') {
+                console.log("inside cash");
                 // Update store revenue and due/pending amounts
                 if (paymentMethod === 'CashOnDelivery') {
                     store.revenueGenerated += totalPrice;
@@ -155,7 +151,6 @@ const createOrder = async (req, res) => {
                     }
 
                     await product.save({ session });
-                    console.log(`Updated inventory for Product ${product._id}`);
 
                     const mostSoldProduct = await Product.findById(store.mostSoldItem).session(session);
                     if (!mostSoldProduct) {
@@ -193,7 +188,7 @@ const createOrder = async (req, res) => {
         });
     } catch (error) {
         console.error('Error creating order:', error);
-        res.status(500).json({ message: 'Server error', error: error.message });
+        res.status(500).json({ message: error.message });
     } finally {
         session.endSession();
     }
@@ -297,7 +292,7 @@ const updateOrder = async (req, res) => {
     console.log(req.params);
     const session = await mongoose.startSession();
     session.startTransaction();
-
+    console.log("object");
     try {
         // Validate if orderId is valid ObjectId
         if (!mongoose.Types.ObjectId.isValid(orderId)) {

@@ -1,5 +1,4 @@
 
-
 // DONT USE THESE ONLY FOR DEVELOPMENT
 const accesskey = ``;
 const secretaccesskey = ``;

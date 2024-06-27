@@ -182,7 +182,7 @@ const addEmployee = async (req, res) => {
     try {
         // Check if the store exists
         const store = await Store.findById(storeId);
-        if (!store) {
+    if (!store) {
             throw { status: 404, message: 'Store not found' };
         }
 

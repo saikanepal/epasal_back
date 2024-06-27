@@ -46,6 +46,46 @@ const sendEmail = async (recipientEmail, name) => {
   } catch (error) {
     console.error(error);
   }
-}
+};
+const sendEmailv1 = async (from, to, subject, msg) => {
+  let params = {
+    Source: from,
+    Destination: {
+      ToAddresses: [
+        to
+      ],
+    },
+    ReplyToAddresses: [],
+    Message: {
+      Body: {
+        Html: {
+          Charset: 'UTF-8',
+          Data: msg,
+        },
+        Text: {
+          Charset: "UTF-8",
+          Data: msg
+        }
+      },
+      Subject: {
+        Charset: 'UTF-8',
+        Data: subject,
+      }
+    },
+  };
 
-sendEmail("karnsameer125@gmail.com", "Sameer Karn");
+  try {
+    const sendEmailCommand = new SendEmailCommand(params);
+    const res = await sesClient.send(sendEmailCommand);
+    console.log('Email has been sent! v3', res);
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+// sendEmail("nischalkarn369369@gmail.com", "Sahil Karn");
+sendEmailv1("no-replymail.service@shopatbanau.com", "saikanepal@gmail.com", "Order:Confirmed", "Details");
+
+// module.exports = {
+//   sendEmailv1
+// };

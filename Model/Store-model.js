@@ -5,7 +5,7 @@ const Order = require('./Order-model'); // Ensure to require the Order model if 
 const esewaTransactionSchema = require('./Esewa-model');
 
 const storeSchema = new mongoose.Schema({
-    name: { type: String, required: true, index: true }, // Indexed field
+    name: { type: String, required: true, index: true, unique: true }, // Indexed field
     logo: {
         logoUrl: { type: String },
         logoID: { type: String }
@@ -119,12 +119,13 @@ const storeSchema = new mongoose.Schema({
     footerDescription: { type: String },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     staff: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    transactionLogs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'TransactionLogs' }],
     subscriptionStatus: {
         type: String,
         enum: ['Silver', 'Gold', 'Platinum'],
         default: 'Silver'
     },
-    logs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
+    logs:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
     subscriptionExpiry: {
         type: Date,
         default: null

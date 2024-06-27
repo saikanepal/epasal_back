@@ -4,6 +4,9 @@ const User = require('../Model/User-model'); // Import the User model|
 const cloudinary = require("cloudinary").v2;
 const esewaTransaction = require('../Model/Esewa-model');
 const mongoose = require('mongoose');
+const TransactionLogs = require('../Model/logs-model');
+const moment = require('moment-timezone');
+const { calculateDate, getCurrentDateTime, calculateDatev1 } = require('../utils/calculateDate');
 
 const createStore = async (req, res) => {
 
@@ -458,26 +461,30 @@ const deleteStore = async (req, res) => {
 
 const updateDashboardStore = async (req, res) => {
     const { storeID } = req.params;
+    console.log("body is",req.body)
     const newData = req.body;
-
+    const transactionLog = req.body.transactionLog;
+    console.log( "printing header",{ user: req.userData, newData, transactionLog });
     try {
         // Fetch the old store data to check for existing images
         const oldStore = await Store.findById(storeID);
 
-        // Check and delete old images if they exist and are being updated
-        if (oldStore.esewa && oldStore.esewa.qr && oldStore.esewa.qr.imageUrl && oldStore.esewa.qr.imageUrl !== newData?.esewa?.qr?.imageUrl) {
-            console.log("Deleting old eSewa image:", oldStore.esewa.qr.imageID);
-            await cloudinary.uploader.destroy(oldStore.esewa.qr.imageID);
-        }
+        if (newData?.esewa || newData?.khalti || newData?.bank) {
+            // Check and delete old images if they exist and are being updated
+            if (newData?.esewa && oldStore.esewa && oldStore.esewa.qr && oldStore.esewa.qr.imageUrl && oldStore.esewa.qr.imageUrl !== newData?.esewa?.qr?.imageUrl) {
+                console.log("Deleting old eSewa image:", oldStore.esewa.qr.imageID);
+                await cloudinary.uploader.destroy(oldStore.esewa.qr.imageID);
+            }
 
-        if (oldStore.bank && oldStore.bank.qr && oldStore.bank.qr.imageUrl && oldStore.bank.qr.imageUrl !== newData?.bank?.qr?.imageUrl) {
-            console.log("Deleting old Bank image:", oldStore.bank.qr.imageID);
-            await cloudinary.uploader.destroy(oldStore.bank.qr.imageID);
-        }
+            if (newData?.bank && oldStore.bank && oldStore.bank.qr && oldStore.bank.qr.imageUrl && oldStore.bank.qr.imageUrl !== newData?.bank?.qr?.imageUrl) {
+                console.log("Deleting old Bank image:", oldStore.bank.qr.imageID);
+                await cloudinary.uploader.destroy(oldStore.bank.qr.imageID);
+            }
 
-        if (oldStore.khalti && oldStore.khalti.qr && oldStore.khalti.qr.imageUrl && oldStore.khalti.qr.imageUrl !== newData?.khalti?.qr?.imageUrl) {
-            console.log("Deleting old Khalti image:", oldStore.khalti.qr.imageID);
-            await cloudinary.uploader.destroy(oldStore.khalti.qr.imageID);
+            if (newData?.bank &&   oldStore.khalti && oldStore.khalti.qr && oldStore.khalti.qr.imageUrl && oldStore.khalti.qr.imageUrl !== newData?.khalti?.qr?.imageUrl) {
+                console.log("Deleting old Khalti image:", oldStore.khalti.qr.imageID);
+                await cloudinary.uploader.destroy(oldStore.khalti.qr.imageID);
+            }
         }
 
         // Find the store by ID and update it with the new data
@@ -500,6 +507,96 @@ const updateDashboardStore = async (req, res) => {
         return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
     }
 };
+const updateDashboardStoreAdminBanau = async (req, res) => {
+    const { storeID } = req.params;
+    console.log({ body: req.body });
+    let newData = req.body.updatedData;
+    let transactionLog = req.body.transactionLog;
+    let duration = req.body.duration;
+    try {
+        console.log((duration.duration !== ''));
+        if (duration.duration !== '' && newData.subscriptionStatus !== 'Silver') {
+            console.log('[+] Today:', getCurrentDateTime());
+            const storeDateCheck = await Store.findById(storeID);
+            if (storeDateCheck.subscriptionExpiry === null) {
+                let exp = calculateDate(duration.duration);
+                console.log("[+] Expiry:", exp);
+                newData["subscriptionExpiry"] = new Date(exp);
+            }
+            else {
+                let exp = calculateDatev1(duration.duration, storeDateCheck.subscriptionExpiry);
+                console.log("[+] Expiry:", exp);
+                newData["subscriptionExpiry"] = new Date(exp);
+            }
+        }
+        else if (newData.subscriptionStatus === 'Silver') {
+            newData["subscriptionExpiry"] = null;
+        }
+
+        console.log({ user: req.userData, newData, transactionLog, duration });
+        // Find the store by ID and update it with the new data
+        const updatedStore = await Store.findByIdAndUpdate(
+            storeID,
+            { $set: newData },
+            { new: true, runValidators: true }
+        );
+        // Check if the store was found and updated
+        if (!updatedStore) {
+            return res.status(404).json({ message: 'Store not found' });
+        }
+        const newTransactionData = new TransactionLogs(transactionLog);
+        const transaction = await newTransactionData.save();
+
+        console.log({ transaction });
+
+        // Add the new transaction log to the store's transactionLogs array
+        updatedStore.transactionLogs.push(transaction._id);
+        await updatedStore.save();
+        // Return the updated store data
+        return res.status(200).json({ updatedStore, message: 'Update successful' });
+    } catch (error) {
+        // Handle any errors that occurred during the update process
+        console.error('Error updating store:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
+
+
+const payStoreNow = async (req, res) => {
+    const { storeID } = req.params;
+    console.log({ body: req.body });
+    let newData = req.body.updatedData;
+    let transactionLog = req.body.transactionLog;
+
+    try {
+        console.log({ user: req.userData, newData, transactionLog });
+        const store = await Store.findById(storeID);
+        if (newData.payment > store.pendingAmount)
+            throw new Error("[-] Invalid Payment Type");
+
+        store.pendingAmount = Math.abs(newData.payment - store.pendingAmount);
+        await store.save();
+
+        transactionLog.pendingAmount = store.pendingAmount;
+        const newTransactionData = new TransactionLogs(transactionLog);
+        const transaction = await newTransactionData.save();
+
+        console.log({ transaction });
+
+        // Add the new transaction log to the store's transactionLogs array
+        store.transactionLogs.push(transaction._id);
+        await store.save();
+        // Return the updated store data
+        return res.status(200).json({ store, message: 'Update successful' });
+    } catch (error) {
+        // Handle any errors that occurred during the update process
+        console.error('Error updating store:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
+
+
+
 
 const updateSubscription = async (req, res) => {
     const { transactionID } = req.params;
@@ -634,6 +731,133 @@ const updateSkin = async (req, res) => {
 
 
 
+
+
+
+
+
+
+const getStoreByFilter = async (req, res) => {
+    try {
+        const searchTerms = req.query.search ? req.query.search.split(',').map(term => term.trim()).filter(Boolean) : [];
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 2;
+        const ownername = req.query.ownername ? req.query.ownername.trim() : '';
+        const staffname = req.query.staffname ? req.query.staffname.trim() : '';
+        const minPendingAmount = parseFloat(req.query.minPendingAmount) || 0;
+        const maxPendingAmount = parseFloat(req.query.maxPendingAmount) || Infinity;
+        const minDueAmount = parseFloat(req.query.minDueAmount) || 0;
+        const maxDueAmount = parseFloat(req.query.maxDueAmount) || Infinity;
+        const order = req.query.order === 'asc' ? 1 : -1;  // Default to descending if not specified
+        const filterType = req.query.filterType || 'pendingAmount';  // Default to pendingAmount if not specified
+
+        let searchConditions = [];
+
+        // Only add search conditions if search terms are provided
+        if (searchTerms.length > 0) {
+            searchTerms.forEach(term => {
+                const termConditions = [
+                    { name: { $regex: term, $options: 'i' } },
+                    { address: { $regex: term, $options: 'i' } },
+                    { email: { $regex: term, $options: 'i' } },
+                    { phoneNumber: { $regex: term, $options: 'i' } },
+                    { subscriptionStatus: { $regex: term, $options: 'i' } },
+                ];
+
+                if (mongoose.Types.ObjectId.isValid(term)) {
+                    termConditions.push({ _id: term });
+                    termConditions.push({ owner: term });
+                }
+
+                searchConditions.push({ $or: termConditions });
+            });
+        }
+
+        // Add ownername to search conditions if provided
+        if (ownername) {
+            const ownerQuery = { name: { $regex: ownername, $options: 'i' } };
+            const owners = await User.find(ownerQuery).select('_id').lean();
+            const ownerIds = owners.map(owner => owner._id);
+
+            if (ownerIds.length > 0) {
+                searchConditions.push({ owner: { $in: ownerIds } });
+            } else {
+                return res.json({ ok: true, stores: [], page, limit, totalCount: 0, hasNextPage: false });
+            }
+        }
+
+        // Add staffname to search conditions if provided
+        if (staffname) {
+            const staffQuery = { name: { $regex: staffname, $options: 'i' } };
+            const staffMembers = await User.find(staffQuery).select('_id').lean();
+            const staffIds = staffMembers.map(staff => staff._id);
+
+            if (staffIds.length > 0) {
+                searchConditions.push({ staff: { $in: staffIds } });
+            } else {
+                return res.json({ ok: true, stores: [], page, limit, totalCount: 0, hasNextPage: false });
+            }
+        }
+
+        // Add range filter based on filterType
+        if (filterType === 'pendingAmount') {
+            searchConditions.push({ pendingAmount: { $gte: minPendingAmount, $lte: maxPendingAmount } });
+        } else if (filterType === 'dueAmount') {
+            searchConditions.push({ dueAmount: { $gte: minDueAmount, $lte: maxDueAmount } });
+        }
+
+        // Construct the query
+        const query = searchConditions.length > 0 ? { $and: searchConditions } : {};
+
+        // Count total number of matching stores
+        const totalCount = await Store.countDocuments(query);
+
+        // Query the database with pagination and sorting
+        const stores = await Store.find(query, {
+            name: 1,
+            _id: 1,
+            staff: 1,
+            email: 1,
+            phoneNumber: 1,
+            location: 1,
+            dueAmount: 1,
+            pendingAmount: 1,
+            revenueGenerated: 1,
+            owner: 1,
+            subscriptionStatus: 1,
+            subscriptionExpiry: 1,
+            esewa: 1,
+            bank: 1,
+            khalti: 1,
+        })
+            .populate('staff', 'name')
+            .populate('owner', 'name')
+            .sort({ [filterType]: order })  // Sort by the specified filterType
+            .skip((page - 1) * limit)
+            .limit(limit)
+            .exec();
+
+        return res.json({
+            ok: true,
+            stores,
+            page,
+            limit,
+            totalCount,
+            hasNextPage: (page * limit) < totalCount
+        });
+    } catch (error) {
+        console.error('Error in getStoreByFilter:', error);
+        return res.status(500).json({ ok: false, error: error.message });
+    }
+};
+
+
+
+
+
+
+
+
 module.exports = {
     createStore,
     getStore,
@@ -644,5 +868,8 @@ module.exports = {
     updateDashboardStore,
     updateSubscription,
     updateSkin,
-    getStoreStats
+    getStoreStats,
+    getStoreByFilter,
+    updateDashboardStoreAdminBanau,
+    payStoreNow,
 };

@@ -461,26 +461,27 @@ const deleteStore = async (req, res) => {
 
 const updateDashboardStore = async (req, res) => {
     const { storeID } = req.params;
-    const newData = req.body.updatedData;
+    console.log("body is",req.body)
+    const newData = req.body;
     const transactionLog = req.body.transactionLog;
-    console.log({ user: req.userData, newData, transactionLog });
+    console.log( "printing header",{ user: req.userData, newData, transactionLog });
     try {
         // Fetch the old store data to check for existing images
         const oldStore = await Store.findById(storeID);
 
-        if (newData.esewa || newData.khalti || newData.bank) {
+        if (newData?.esewa || newData?.khalti || newData?.bank) {
             // Check and delete old images if they exist and are being updated
-            if (oldStore.esewa && oldStore.esewa.qr && oldStore.esewa.qr.imageUrl && oldStore.esewa.qr.imageUrl !== newData?.esewa?.qr?.imageUrl) {
+            if (newData?.esewa && oldStore.esewa && oldStore.esewa.qr && oldStore.esewa.qr.imageUrl && oldStore.esewa.qr.imageUrl !== newData?.esewa?.qr?.imageUrl) {
                 console.log("Deleting old eSewa image:", oldStore.esewa.qr.imageID);
                 await cloudinary.uploader.destroy(oldStore.esewa.qr.imageID);
             }
 
-            if (oldStore.bank && oldStore.bank.qr && oldStore.bank.qr.imageUrl && oldStore.bank.qr.imageUrl !== newData?.bank?.qr?.imageUrl) {
+            if (newData?.bank && oldStore.bank && oldStore.bank.qr && oldStore.bank.qr.imageUrl && oldStore.bank.qr.imageUrl !== newData?.bank?.qr?.imageUrl) {
                 console.log("Deleting old Bank image:", oldStore.bank.qr.imageID);
                 await cloudinary.uploader.destroy(oldStore.bank.qr.imageID);
             }
 
-            if (oldStore.khalti && oldStore.khalti.qr && oldStore.khalti.qr.imageUrl && oldStore.khalti.qr.imageUrl !== newData?.khalti?.qr?.imageUrl) {
+            if (newData?.bank &&   oldStore.khalti && oldStore.khalti.qr && oldStore.khalti.qr.imageUrl && oldStore.khalti.qr.imageUrl !== newData?.khalti?.qr?.imageUrl) {
                 console.log("Deleting old Khalti image:", oldStore.khalti.qr.imageID);
                 await cloudinary.uploader.destroy(oldStore.khalti.qr.imageID);
             }
@@ -612,9 +613,12 @@ const updateSubscription = async (req, res) => {
             select: 'subscriptionStatus subscriptionExpiry'
         })
 
+        console.log("Transaction record:", savedTransaction);
+
         if (savedTransaction.used) {
-            return res.status(401).json({ message: 'Payment Already Went Through' })
+            return res.status(401).json({ message: 'Payment already processed' });
         }
+
         savedTransaction.used = true;
 
         const store = savedTransaction.store;
@@ -624,44 +628,29 @@ const updateSubscription = async (req, res) => {
 
         // Update store's subscription status
         store.subscriptionStatus = savedTransaction.subscription;
-        await savedTransaction.save();
-        // Calculate new subscriptionExpiry based on savedTransaction.duration
-        const currentDate = new Date();
+
+        // Set new subscriptionExpiry based on savedTransaction.duration or default to today's date
         let newExpiryDate;
 
         switch (savedTransaction.duration) {
             case 'monthly':
-                if (store.subscriptionExpiry) {
-                    newExpiryDate = new Date(store.subscriptionExpiry);
-                    newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
-                } else {
-                    return res.status(400).json({ message: 'Previous subscription expiry not found' });
-                }
+                newExpiryDate = store.subscriptionExpiry ? new Date(store.subscriptionExpiry) : new Date();
+                newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
                 break;
             case 'quarterly':
-                if (store.subscriptionExpiry) {
-                    newExpiryDate = new Date(store.subscriptionExpiry);
-                    newExpiryDate.setMonth(newExpiryDate.getMonth() + 3);
-                } else {
-                    return res.status(400).json({ message: 'Previous subscription expiry not found' });
-                }
+                newExpiryDate = store.subscriptionExpiry ? new Date(store.subscriptionExpiry) : new Date();
+                newExpiryDate.setMonth(newExpiryDate.getMonth() + 3);
                 break;
             case 'yearly':
-                if (store.subscriptionExpiry) {
-                    newExpiryDate = new Date(store.subscriptionExpiry);
-                    newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-                } else {
-                    return res.status(400).json({ message: 'Previous subscription expiry not found' });
-                }
+                newExpiryDate = store.subscriptionExpiry ? new Date(store.subscriptionExpiry) : new Date();
+                newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
                 break;
             default:
                 return res.status(400).json({ message: 'Invalid duration type' });
         }
 
-
         // Update store's subscriptionExpiry
         store.subscriptionExpiry = newExpiryDate;
-        store.payments.push(transactionID);
 
         // Save the updated store data
         const updatedStore = await store.save();
@@ -674,6 +663,7 @@ const updateSubscription = async (req, res) => {
         return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
     }
 };
+
 
 const updateSkin = async (req, res) => {
     const { transactionID } = req.params;

@@ -46,7 +46,7 @@ const storeSchema = new mongoose.Schema({
                 component: { type: String },
                 skinType: { type: String },
                 activeSkin: { type: String },
-                skinInventory: [{ type: String ,unique:true}],
+                skinInventory: [{ type: String, unique: true }],
             }
         ],
         default: [
@@ -105,7 +105,7 @@ const storeSchema = new mongoose.Schema({
                 skinInventory: ["default"]
             }
         ]
-    },    
+    },
     inventory: { type: Number, default: 0 },
     revenueGenerated: { type: Number, default: 0 },
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
@@ -128,7 +128,7 @@ const storeSchema = new mongoose.Schema({
     logs:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
     subscriptionExpiry: {
         type: Date,
-        default: null  // Default to one year from current date
+        default: null
     },
 
     activeTheme: { type: Number, default: 1 },
@@ -191,6 +191,16 @@ storeSchema.pre('remove', async function (next) {
     } catch (err) {
         next(err);
     }
+});
+
+// Mongoose middleware: Pre hook to check and update subscription status and expiry
+storeSchema.pre('save', async function (next) {
+    // Check if subscriptionExpiry is defined and if it has passed
+    if (this.subscriptionExpiry && this.subscriptionExpiry <= new Date()) {
+        this.subscriptionStatus = 'Silver'; // Set subscriptionStatus to Silver
+        this.subscriptionExpiry = null; // Set subscriptionExpiry to null
+    }
+    next();
 });
 
 const Store = mongoose.model('Store', storeSchema);

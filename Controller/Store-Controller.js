@@ -7,6 +7,9 @@ const mongoose = require('mongoose');
 const TransactionLogs = require('../Model/logs-model');
 const moment = require('moment-timezone');
 const { calculateDate, getCurrentDateTime, calculateDatev1 } = require('../utils/calculateDate');
+const crypto = require("crypto");
+
+require('dotenv').config();
 
 const createStore = async (req, res) => {
     const {
@@ -148,7 +151,16 @@ const createStore = async (req, res) => {
 };
 
 
+const createSignature = (message) => {
+    const secret = process.env.SECRET;
+    // Create an HMAC-SHA256 hash
+    const hmac = crypto.createHmac("sha256", secret);
+    hmac.update(message);
 
+    // Get the digest in base64 format
+    const hashInBase64 = hmac.digest("base64");
+    return hashInBase64;
+};
 
 const getStore = async (req, res) => {
     try {
@@ -201,7 +213,7 @@ const getStoreByName = async (req, res) => {
                     storeName
                 ]
             }
-        }).populate('owner');
+        }).populate('owner mostSoldItem');
 
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
@@ -464,10 +476,10 @@ const deleteStore = async (req, res) => {
 
 const updateDashboardStore = async (req, res) => {
     const { storeID } = req.params;
-    console.log("body is",req.body)
+    console.log("body is", req.body)
     const newData = req.body;
     const transactionLog = req.body.transactionLog;
-    console.log( "printing header",{ user: req.userData, newData, transactionLog });
+    console.log("printing header", { user: req.userData, newData, transactionLog });
     try {
         // Fetch the old store data to check for existing images
         const oldStore = await Store.findById(storeID);
@@ -484,7 +496,7 @@ const updateDashboardStore = async (req, res) => {
                 await cloudinary.uploader.destroy(oldStore.bank.qr.imageID);
             }
 
-            if (newData?.bank &&   oldStore.khalti && oldStore.khalti.qr && oldStore.khalti.qr.imageUrl && oldStore.khalti.qr.imageUrl !== newData?.khalti?.qr?.imageUrl) {
+            if (newData?.bank && oldStore.khalti && oldStore.khalti.qr && oldStore.khalti.qr.imageUrl && oldStore.khalti.qr.imageUrl !== newData?.khalti?.qr?.imageUrl) {
                 console.log("Deleting old Khalti image:", oldStore.khalti.qr.imageID);
                 await cloudinary.uploader.destroy(oldStore.khalti.qr.imageID);
             }
@@ -598,7 +610,31 @@ const payStoreNow = async (req, res) => {
     }
 };
 
+const payDueAmount = async (req, res) => {
+    console.log(req.body);
+    const newEsewaTransaction = new esewaTransaction(req.body.data);
+    const savedEsewaTransaction = await newEsewaTransaction.save();
+    // Assuming you need data from savedPayment for formData
+    const signature = createSignature(
+        `total_amount=${savedEsewaTransaction.amount},transaction_uuid=${savedEsewaTransaction._id},product_code=${process.env.PRODUCT_CODE}`
+    );
+    const formData = {
+        amount: savedEsewaTransaction.amount,
+        failure_url: req.body.fail || process.env.FAILURE_URL,
+        product_delivery_charge: "0",
+        product_service_charge: "0",
+        product_code: process.env.PRODUCT_CODE,
+        signature: signature,
+        signed_field_names: "total_amount,transaction_uuid,product_code",
+        success_url: req.body.success || process.env.SUCCESS_URL,
+        tax_amount: "0",
+        total_amount: savedEsewaTransaction.amount,
+        transaction_uuid: savedEsewaTransaction._id,
+    };
 
+    res.json({ message: "Order Created Successfully", payment: savedEsewaTransaction, formData });
+
+}
 
 
 const updateSubscription = async (req, res) => {
@@ -666,6 +702,35 @@ const updateSubscription = async (req, res) => {
         return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
     }
 };
+
+const updateDueAmount = async (req, res) => {
+    const { orderId } = req.params;
+    const { amount } = req.body;
+    console.log("inside update due amount");
+    try {
+        // Fetch the order using the orderId
+        const order = await esewaTransaction.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+        console.log(order);
+        // Fetch the store using the storeId inside order.store
+        const store = await Store.findById(order.store);
+        if (!store) {
+            return res.status(404).json({ message: "Store not found" });
+        }
+
+        console.log(store);
+        // Update the due amount in the order (assuming there's a dueAmount field)
+        store.dueAmount -= order.amount;
+        console.log(store.dueAmount);
+        await store.save();
+
+        res.status(200).json({ message: "Due amount updated successfully", order });
+    } catch (error) {
+        res.status(500).json({ message: "An error occurred", error: error.message });
+    }
+}
 
 
 const updateSkin = async (req, res) => {
@@ -875,4 +940,6 @@ module.exports = {
     getStoreByFilter,
     updateDashboardStoreAdminBanau,
     payStoreNow,
+    payDueAmount,
+    updateDueAmount
 };

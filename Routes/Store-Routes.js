@@ -23,9 +23,14 @@ router.patch('/update/:id', storeController.updateStore);
 router.put('/update/dashboard/:storeID', storeController.updateDashboardStore);
 router.patch('/upgrade/storeSubscription/:transactionID', storeController.updateSubscription);
 router.patch('/upgrade/storeSkin/:transactionID', storeController.updateSkin);
-router.get('/get/graph/sales',storeController.getStoreStats);router.put('/update/dashboard/banau/:storeID',checkBanauRole('Admin'),storeController.updateDashboardStoreAdminBanau);
+router.get('/get/graph/sales', storeController.getStoreStats);
+router.put('/update/dashboard/banau/:storeID', checkBanauRole('Admin'), storeController.updateDashboardStoreAdminBanau);
 
-router.post('/update/dashboard/banau/paymenttostore/:storeID',checkBanauRole('Admin'),storeController.payStoreNow);
+router.put('/disable/store/:storeID', checkBanauRole('Admin'), storeController.disableStore);
+router.put('/activate/store/:storeID', checkBanauRole('Admin'), storeController.activateStore);
+
+router.post('/update/dashboard/banau/paymenttostore/:storeID', checkBanauRole('Admin'), storeController.payStoreNow);
+
 
 
 router.get('/getstorebyfilter', storeController.getStoreByFilter);

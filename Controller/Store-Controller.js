@@ -43,9 +43,9 @@ const createStore = async (req, res) => {
                     reqname
                 ]
             }
-        })
+        });
         if (dataExists) {
-            console.log("already exist")
+            console.log("already exist");
             return res.status(400).json({ message: "Store already exists" });
         }
         let savedProducts = [];
@@ -158,7 +158,7 @@ const getStore = async (req, res) => {
                     storeName
                 ]
             }
-        })
+        });
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
@@ -177,7 +177,7 @@ const getStore = async (req, res) => {
         await store.populate({
             path: 'products',
             options: { limit: limit }
-        })
+        });
 
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
@@ -401,7 +401,7 @@ const updateStore = async (req, res) => {
         console.error('Error updating store:', error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
-}
+};
 
 const deleteStore = async (req, res) => {
     try {
@@ -561,6 +561,46 @@ const updateDashboardStoreAdminBanau = async (req, res) => {
 };
 
 
+const disableStore = async (req, res) => {
+    try {
+        const { storeID } = req.params;
+        if (!storeID)
+            throw new Error("[-] Store Require To Diable");
+        const store = await Store.findByIdAndUpdate(
+            storeID,
+            { $set: { isDisabled: true } },
+            { new: true }
+        );
+        if (!store)
+            throw new Error("[+] Invalid Store");
+        // TODO -> Here Send Email To The Store Has been disabled and send message 
+        return res.status(200).json({ store, message: `Store ${store.name} disabled` });
+    } catch (error) {
+        console.error('Error updating store:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
+const activateStore = async (req, res) => {
+    try {
+        const { storeID } = req.params;
+        if (!storeID)
+            throw new Error("[-] Store Require To Diable");
+        const store = await Store.findByIdAndUpdate(
+            storeID,
+            { $set: { isDisabled: false } },
+            { new: true }
+        );
+        if (!store)
+            throw new Error("[+] Invalid Store");
+        // TODO -> Here Send Email To The Store Has been re activated and send message 
+        return res.status(200).json({ store, message: `Store ${store.name} disabled` });
+    } catch (error) {
+        console.error('Error updating store:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
+
+
 const payStoreNow = async (req, res) => {
     const { storeID } = req.params;
     console.log({ body: req.body });
@@ -610,10 +650,10 @@ const updateSubscription = async (req, res) => {
         await savedTransaction.populate({
             path: 'store',
             select: 'subscriptionStatus subscriptionExpiry'
-        })
+        });
 
         if (savedTransaction.used) {
-            return res.status(401).json({ message: 'Payment Already Went Through' })
+            return res.status(401).json({ message: 'Payment Already Went Through' });
         }
         savedTransaction.used = true;
 
@@ -882,4 +922,6 @@ module.exports = {
     getStoreByFilter,
     updateDashboardStoreAdminBanau,
     payStoreNow,
+    disableStore,
+    activateStore
 };

@@ -46,7 +46,7 @@ const storeSchema = new mongoose.Schema({
                 component: { type: String },
                 skinType: { type: String },
                 activeSkin: { type: String },
-                skinInventory: [{ type: String ,unique:true}],
+                skinInventory: [{ type: String, unique: true }],
             }
         ],
         default: [
@@ -105,7 +105,7 @@ const storeSchema = new mongoose.Schema({
                 skinInventory: ["default"]
             }
         ]
-    },    
+    },
     inventory: { type: Number, default: 0 },
     revenueGenerated: { type: Number, default: 0 },
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
@@ -125,7 +125,7 @@ const storeSchema = new mongoose.Schema({
         enum: ['Silver', 'Gold', 'Platinum'],
         default: 'Silver'
     },
-    logs:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
+    logs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
     subscriptionExpiry: {
         type: Date,
         default: null  // Default to one year from current date
@@ -177,11 +177,28 @@ const storeSchema = new mongoose.Schema({
             value: { type: Number, default: 0 }
         }
     ],
+    isDisabled: { type: Boolean, default: false },
     fonts: { type: Object },
     expectedDeliveryTime: { type: String, default: '3 to 4 business days' },
     expectedDeliveryPrice: { type: Number, default: 100 },
     liveChatSource: { type: String, default: '' },
 }, { timestamps: true });
+
+
+
+storeSchema.pre('save', function (next) {
+    if (this.dueAmount > 5000) {
+        this.isDisabled = true;
+    }
+    if (this.isDisabled) {
+        const error = new Error('Please pay the dueAmount');
+        next(error);
+    } else {
+        next();
+    }
+});
+
+
 
 storeSchema.pre('remove', async function (next) {
     try {

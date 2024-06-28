@@ -9,7 +9,6 @@ const moment = require('moment-timezone');
 const { calculateDate, getCurrentDateTime, calculateDatev1 } = require('../utils/calculateDate');
 
 const createStore = async (req, res) => {
-
     const {
         name,
         logo,
@@ -33,9 +32,20 @@ const createStore = async (req, res) => {
         fonts,
         featuredProducts,
     } = req.body.store;
+
     try {
-        // Create products if products data is provided
-        const reqname = req.body.store.name.trim().replace(/\s+/g, '').toLowerCase(); // Remove all spaces and convert to lowercase
+        // Check if the user already owns a store
+        const user = await User.findById(req.userData.userID);
+        const isOwner = user.roles.some(role => role.role === 'Owner');
+
+        if (isOwner) {
+            return res.status(400).json({ message: "User can only own one store" });
+        }
+
+        // Remove all spaces and convert to lowercase for the store name
+        const reqname = req.body.store.name.trim().replace(/\s+/g, '').toLowerCase();
+
+        // Check if a store with the same name already exists
         const dataExists = await Store.findOne({
             $expr: {
                 $eq: [
@@ -43,15 +53,15 @@ const createStore = async (req, res) => {
                     reqname
                 ]
             }
-        })
+        });
+
         if (dataExists) {
-            console.log("already exist")
             return res.status(400).json({ message: "Store already exists" });
         }
+
         let savedProducts = [];
 
         if (products && products.length > 0) {
-            // Iterate through products and create them
             for (const productData of products) {
                 const {
                     name,
@@ -67,7 +77,6 @@ const createStore = async (req, res) => {
                     discount
                 } = productData;
 
-                // Create a new product instance
                 const newProduct = new Product({
                     name,
                     description,
@@ -82,12 +91,11 @@ const createStore = async (req, res) => {
                     discount
                 });
 
-                // Save the product to the database
                 const savedProduct = await newProduct.save();
                 savedProducts.push(savedProduct);
             }
         }
-        // Create a new store instance
+
         const newStore = new Store({
             name,
             logo: {
@@ -100,7 +108,7 @@ const createStore = async (req, res) => {
             products: savedProducts,
             location,
             phoneNumber,
-            email: email,
+            email,
             color,
             secondaryBanner: secondaryBanner,
             cart,
@@ -120,22 +128,17 @@ const createStore = async (req, res) => {
             },
             featuredProducts,
             fonts,
-            owner: req.userData.userID // Set admin as req.userData.userID
+            owner: req.userData.userID
         });
 
-        // Save the store to the database
         await newStore.save();
 
-        // Update user document to include the new store ID and the Owner role
-        const user = await User.findById(req.userData.userID);
-        if (user) {
-            user.stores.push(newStore._id); // Add new store ID to user's stores array
-            user.roles.push({
-                storeId: newStore._id,
-                role: 'Owner'
-            }); // Add new role with storeId and role 'Owner'
-            await user.save();
-        }
+        user.stores.push(newStore._id);
+        user.roles.push({
+            storeId: newStore._id,
+            role: 'Owner'
+        });
+        await user.save();
 
         res.status(201).json({ message: 'Store created successfully', store: newStore });
     } catch (error) {

@@ -367,6 +367,48 @@
     };
     
     
+    const getStoreAndProduct = async (req, res) => {
+      const { storeName, productID } = req.params;
+    
+      try {
+        const normalizedStoreName = storeName.trim().replace(/\s+/g, '').toLowerCase();
+    
+        // Find the store by normalized name and populate only the specific product
+        const store = await Store.findOne({
+          $expr: {
+            $eq: [
+              { $toLower: { $replaceAll: { input: "$name", find: " ", replacement: "" } } },
+              normalizedStoreName
+            ]
+          },
+          products: { $elemMatch: { $eq: mongoose.Types.ObjectId(productID) } }
+        }).populate({
+          path: 'products',
+          match: { _id: mongoose.Types.ObjectId(productID) }
+        });
+    
+        if (!store) {
+          return res.status(404).json({ success: false, message: "Store not found or product not found in the specified store" });
+        }
+    
+        // Ensure that the product is populated
+        const populatedProduct = store.products.find(product => product._id.toString() === productID);
+    
+        if (!populatedProduct) {
+          return res.status(404).json({ success: false, message: "Product not found" });
+        }
+    
+        return res.status(200).json({
+          success: true,
+          store,
+          product: populatedProduct
+        });
+    
+      } catch (err) {
+        console.error(err);
+        return res.status(400).json({ success: false, message: "Error in fetching store and product" });
+      }
+    };
     
   
 
@@ -379,7 +421,8 @@
       getAllProductData,
       // getProductByName,
       getAllStoreProductByPagination,
-      getStoreProducts
+      getStoreProducts,
+      getStoreAndProduct,
     };
 
   // const addProduct=(req,res)=>{

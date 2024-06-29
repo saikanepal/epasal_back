@@ -5,8 +5,8 @@ const Store = require("../Model/Store-model");
 
 const checkStoreDisabled = async (req, res, next) => {
     try {
-        const storeId = req.params.storeId || req.body.storeId;
-
+        const storeId = req.params.storeID || req.body.storeID;
+        console.log({ store: storeId });
         if (!storeId) {
             return res.status(400).json({ message: 'storeId is required' });
         }

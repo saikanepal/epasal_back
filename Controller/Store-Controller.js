@@ -655,29 +655,33 @@ const payStoreNow = async (req, res) => {
 };
 
 const payDueAmount = async (req, res) => {
-    console.log(req.body);
-    const newEsewaTransaction = new esewaTransaction(req.body.data);
-    const savedEsewaTransaction = await newEsewaTransaction.save();
-    // Assuming you need data from savedPayment for formData
-    const signature = createSignature(
-        `total_amount=${savedEsewaTransaction.amount},transaction_uuid=${savedEsewaTransaction._id},product_code=${process.env.PRODUCT_CODE}`
-    );
-    const formData = {
-        amount: savedEsewaTransaction.amount,
-        failure_url: req.body.fail || process.env.FAILURE_URL,
-        product_delivery_charge: "0",
-        product_service_charge: "0",
-        product_code: process.env.PRODUCT_CODE,
-        signature: signature,
-        signed_field_names: "total_amount,transaction_uuid,product_code",
-        success_url: req.body.success || process.env.SUCCESS_URL,
-        tax_amount: "0",
-        total_amount: savedEsewaTransaction.amount,
-        transaction_uuid: savedEsewaTransaction._id,
-    };
+    try {
+        console.log(req.body);
+        const newEsewaTransaction = new esewaTransaction(req.body.data);
+        const savedEsewaTransaction = await newEsewaTransaction.save();
+        // Assuming you need data from savedPayment for formData
+        const signature = createSignature(
+            `total_amount=${savedEsewaTransaction.amount},transaction_uuid=${savedEsewaTransaction._id},product_code=${process.env.PRODUCT_CODE}`
+        );
+        const formData = {
+            amount: savedEsewaTransaction.amount,
+            failure_url: req.body.fail || process.env.FAILURE_URL,
+            product_delivery_charge: "0",
+            product_service_charge: "0",
+            product_code: process.env.PRODUCT_CODE,
+            signature: signature,
+            signed_field_names: "total_amount,transaction_uuid,product_code",
+            success_url: req.body.success || process.env.SUCCESS_URL,
+            tax_amount: "0",
+            total_amount: savedEsewaTransaction.amount,
+            transaction_uuid: savedEsewaTransaction._id,
+        };
 
-    res.json({ message: "Order Created Successfully", payment: savedEsewaTransaction, formData });
-
+        res.json({ message: "Order Created Successfully", payment: savedEsewaTransaction, formData });
+    } catch (error) {
+        console.log(`[-] Error while paying dueAmount:`, error);
+        return res.status(500).json({ message: 'An error occurred while updating the skin', error: error.message });
+    }
 };
 
 
@@ -757,6 +761,8 @@ const updateDueAmount = async (req, res) => {
         if (!order) {
             return res.status(404).json({ message: "Order not found" });
         }
+        if (order.used)
+            return res.status(200).json({ message: 'payment done', order: order });
         console.log(order);
         // Fetch the store using the storeId inside order.store
         const store = await Store.findById(order.store);
@@ -766,8 +772,11 @@ const updateDueAmount = async (req, res) => {
 
         console.log(store);
         // Update the due amount in the order (assuming there's a dueAmount field)
+
         store.dueAmount -= order.amount;
         console.log(store.dueAmount);
+        order.used = true;
+        await order.save();
         await store.save();
 
         res.status(200).json({ message: "Due amount updated successfully", order });

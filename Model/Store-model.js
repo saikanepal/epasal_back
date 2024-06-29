@@ -243,6 +243,10 @@ storeSchema.post('save', async function (doc, next) {
             await doc.save();
             console.log(`[+] Store has been disabled : `, { doc });
         }
+        if (doc.dueAmount < 5000 && doc.isDisabled) {
+            doc.isDisabled = true;
+            await doc.save();
+        }
         next();
     } catch (error) {
         next(error);

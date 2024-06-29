@@ -5,12 +5,13 @@ const EsewaTransaction = require('../Model/Esewa-model');
 const mongoose = require('mongoose');
 const { response } = require('express');
 const crypto = require("crypto");
-
+require('dotenv').config();
 
 
 
 const createOrder = async (req, res) => {
     const session = await mongoose.startSession();
+
     try {
         await session.withTransaction(async () => {
             const {
@@ -18,7 +19,6 @@ const createOrder = async (req, res) => {
                 phoneNumber,
                 email,
                 cart,
-                status,
                 price,
                 totalPrice,
                 deliveryCharge,
@@ -29,11 +29,8 @@ const createOrder = async (req, res) => {
                 paymentMethod,
                 esewaTransactionID
             } = req.body.orderData;
-
-            console.log('Received Order Request:', req.body);
-            console.log(cart);
+            console.log(req.body.orderData, "herhere");
             const storeID = req.params.storeID;
-            console.log('Store ID:', storeID);
 
             // Validate required fields
             if (!fullName || !phoneNumber || !cart || cart.length === 0 || !price || !totalPrice) {
@@ -41,32 +38,42 @@ const createOrder = async (req, res) => {
             }
 
             // Validate and populate products in the cart
+            // Validate and populate products in the cart
+            // Validate and populate products in the cart
             const populatedCart = await Promise.all(cart.map(async item => {
                 const product = await Product.findById(item.product).session(session);
                 if (!product) {
                     throw new Error(`Product with ID ${item.product} not found`);
                 }
-
+                console.log("item10-1",item.selectedVariant[0].options?.name);
                 // Check for stock availability
-                if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default') {
-                    // Default variant scenario
+                if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default' || item.selectedVariant[0].options?.name === 'default') {
+                    // Default to handling without variants
                     if (item.count > product.inventory) {
                         throw new Error(`Product with ID ${item.product} is out of stock`);
                     }
-                } else {
+                }
+                else {
                     // Non-default variant scenario
                     const variant = product.variant.find(v => v.name === item.selectedVariant[0].name);
                     if (!variant) {
                         throw new Error(`Variant ${item.selectedVariant[0].name} not found for product with ID ${item.product}`);
                     }
-
-                    const option = variant.options.find(o => o.name === item.selectedVariant[0].options.name);
-                    if (!option) {
-                        throw new Error(`Option ${item.selectedVariant[0].options.name} not found in variant ${item.selectedVariant[0].name} for product with ID ${item.product}`);
-                    }
-
-                    if (item.count > option.count) {
-                        throw new Error(`Option ${item.selectedVariant[0].options.name} in variant ${item.selectedVariant[0].name} for product with ID ${item.product} is out of stock`);
+                    
+                    console.log("item is ", item);
+                    console.log("variant is ", variant);
+                    console.log("option is", item?.selectedVariant[0]?.options);
+                    
+                    // Skip validation if variant or option name is 'default'
+                    if (item.selectedVariant[0].name !== 'default' && item.selectedVariant[0].options.name !== 'default') {
+                        const option = variant.options.find(o => o.name === item.selectedVariant[0].options.name);
+                        if (!option) {
+                            // throw new Error(`Option ${item.selectedVariant[0].options.name} not found in variant ${item.selectedVariant[0].name} for product with ID ${item.product}`);
+                        }
+                        
+                        if (item.count > option.count) {
+                            throw new Error(`Option ${item.selectedVariant[0].options.name} in variant ${item.selectedVariant[0].name} for product with ID ${item.product} is out of stock`);
+                        }
                     }
                 }
 
@@ -102,11 +109,8 @@ const createOrder = async (req, res) => {
                 store: storeID
             });
 
-            console.log('Creating New Order:', newOrder);
-
             // Save order to the database
             const savedOrder = await newOrder.save({ session });
-            console.log('Saved Order:', savedOrder);
 
             // Add the order to the store's orders array
             const store = await Store.findById(storeID).session(session);
@@ -115,8 +119,8 @@ const createOrder = async (req, res) => {
             }
             store.orders.push(savedOrder._id);
 
+            // Update store revenue and due/pending amounts
             if (paymentMethod === 'CashOnDelivery' || paymentMethod === 'esewa') {
-                // Update store revenue and due/pending amounts
                 if (paymentMethod === 'CashOnDelivery') {
                     store.revenueGenerated += totalPrice;
                     const dueAmountIncrease = 0.03 * totalPrice;
@@ -140,27 +144,35 @@ const createOrder = async (req, res) => {
                         throw new Error(`Product with ID ${item.product} not found`);
                     }
 
-                    if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default') {
-                        // Default variant scenario
+                    if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default' ||  item.selectedVariant[0]?.options.name === 'default') {
+                        // Default scenario: no variants specified
                         product.inventory -= item.count;
                         product.soldQuantity += item.count;
                         product.revenueGenerated += item.count * item.price;
                     } else {
                         // Non-default variant scenario
                         const variant = product.variant.find(v => v.name === item.selectedVariant[0].name);
+                        if (!variant) {
+                            throw new Error(`Variant ${item.selectedVariant[0].name} not found for product with ID ${item.product}`);
+                        }
+
                         const option = variant.options.find(o => o.name === item.selectedVariant[0].options.name);
+                        if (!option) {
+                            throw new Error(`Option ${item.selectedVariant[0].options.name} not found in variant ${item.selectedVariant[0].name} for product with ID ${item.product}`);
+                        }
+
                         option.count -= item.count;
                         product.soldQuantity += item.count;
                         product.revenueGenerated += item.count * option.price;
                     }
 
                     await product.save({ session });
-                    console.log(`Updated inventory for Product ${product._id}`);
 
+                    // Update most sold item for the store
                     const mostSoldProduct = await Product.findById(store.mostSoldItem).session(session);
                     if (!mostSoldProduct) {
                         store.mostSoldItem = item.product;
-                    } else if (mostSoldProduct && mostSoldProduct.soldQuantity < product.soldQuantity) {
+                    } else if (mostSoldProduct.soldQuantity < product.soldQuantity) {
                         store.mostSoldItem = item.product;
                     }
                 }));
@@ -172,17 +184,17 @@ const createOrder = async (req, res) => {
                     res.status(201).json(savedOrder);
                 } else if (paymentMethod === 'esewa') {
                     const signature = createSignature(
-                        `total_amount=${savedOrder.totalPrice},transaction_uuid=${savedOrder._id},product_code=EPAYTEST`
+                        `total_amount=${savedOrder.totalPrice},transaction_uuid=${savedOrder._id},product_code=${process.env.PRODUCT_CODE}`
                     );
                     const formData = {
                         amount: totalPrice,
-                        failure_url: req.body.fail || "https://google.com",
+                        failure_url: req.body.fail || process.env.FAILURE_URL,
                         product_delivery_charge: "0",
                         product_service_charge: "0",
-                        product_code: "EPAYTEST",
+                        product_code: process.env.PRODUCT_CODE,
                         signature: signature,
                         signed_field_names: "total_amount,transaction_uuid,product_code",
-                        success_url: req.body.success || "http://localhost:3000/esewa/subscription",
+                        success_url: req.body.success || process.env.SUCCESS_URL,
                         tax_amount: "0",
                         total_amount: savedOrder.totalPrice,
                         transaction_uuid: savedOrder._id,
@@ -193,17 +205,16 @@ const createOrder = async (req, res) => {
         });
     } catch (error) {
         console.error('Error creating order:', error);
-        res.status(500).json({ message: 'Server error', error: error.message });
+        res.status(500).json({ message: error.message });
     } finally {
         session.endSession();
     }
-};
-
+}
 
 
 const createSignature = (message) => {
 
-    const secret = "8gBm/:&EnhH.1/q";
+    const secret = process.env.SECRET;
     // Create an HMAC-SHA256 hash
     const hmac = crypto.createHmac("sha256", secret);
     hmac.update(message);
@@ -297,7 +308,7 @@ const updateOrder = async (req, res) => {
     console.log(req.params);
     const session = await mongoose.startSession();
     session.startTransaction();
-
+    console.log("object");
     try {
         // Validate if orderId is valid ObjectId
         if (!mongoose.Types.ObjectId.isValid(orderId)) {
@@ -351,39 +362,8 @@ const updateOrder = async (req, res) => {
             await store.save({ session });
 
             // Update product data (reverse changes made during order creation)
-            await Promise.all(order.cart.map(async item => {
-                const product = await Product.findById(item.product).session(session);
-                if (!product) {
-                    throw new Error(`Product with ID ${item.product} not found`);
-                }
-
-                if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default') {
-                    // Default variant scenario
-                    product.inventory += item.count;
-                    product.soldQuantity -= item.count;
-                    product.revenueGenerated -= item.count * item.price;
-                } else {
-                    // Non-default variant scenario
-                    const variant = product.variant.find(v => v.name === item.selectedVariant[0].name);
-                    const option = variant.options.find(o => o.name === item.selectedVariant[0].options.name);
-                    option.count += item.count;
-                    product.soldQuantity -= item.count;
-                    product.revenueGenerated -= item.count * option.price;
-                }
-
-                await product.save({ session });
-
-                // Check if this product was the most sold item and update store.mostSoldItem if needed
-                if (store.mostSoldItem && store.mostSoldItem.equals(item.product)) {
-                    const mostSoldProduct = await Product.findById(store.mostSoldItem).session(session);
-                    if (mostSoldProduct && mostSoldProduct.soldQuantity < product.soldQuantity) {
-                        store.mostSoldItem = product._id;
-                    }
-                }
-            }));
-
-            // Save the store document after all product updates
-            await store.save({ session });
+        
+    
         }
 
         // Update the order status and other fields in the database

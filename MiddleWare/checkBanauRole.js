@@ -10,17 +10,18 @@ const checkBanauRole = (requiredRole) => {
             if (!user) {
                 return res.status(404).json({ message: 'User not found' });
             }
-
+            
             // Define the role hierarchy
             const roleHierarchy = {
                 'Admin': 3,
-                'Manager':2,
+                'Manager': 2,
                 'Staff': 1
             };
 
             if (!user.isBanauAdmin) {
                 return res.status(403).json({ message: 'Access Denied' });
             }
+
             // Check the user's Banau role
             const userBanauRole = user.banauRoles.role;
 

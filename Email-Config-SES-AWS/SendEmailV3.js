@@ -47,6 +47,7 @@ const sendEmail = async (recipientEmail, name) => {
     console.error(error);
   }
 };
+
 const sendEmailv1 = async (from, to, subject, msg) => {
   let params = {
     Source: from,

@@ -10,7 +10,7 @@ const checkStoreDisabled = async (req, res, next) => {
         if (!storeId) {
             return res.status(400).json({ message: 'storeId is required' });
         }
-        const store = await Store.findById(storeId);
+        const store = await Store.findById(storeId).select('isDisabled');
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }

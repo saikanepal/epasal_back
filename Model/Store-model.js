@@ -46,7 +46,7 @@ const storeSchema = new mongoose.Schema({
                 component: { type: String },
                 skinType: { type: String },
                 activeSkin: { type: String },
-                skinInventory: [{ type: String, unique: true }],
+                skinInventory: [{ type: String }],
             }
         ],
         default: [

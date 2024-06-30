@@ -9,6 +9,7 @@ const SES_CONFIG = {
   region: region,
 };
 
+console.log({ SES_CONFIG });
 // Create SES service object.
 const sesClient = new SESClient(SES_CONFIG);
 
@@ -47,45 +48,50 @@ const sendEmail = async (recipientEmail, name) => {
     console.error(error);
   }
 };
-const sendEmailv1 = async (from, to, subject, msg) => {
-  let params = {
-    Source: from,
-    Destination: {
-      ToAddresses: [
-        to
-      ],
-    },
-    ReplyToAddresses: [],
-    Message: {
-      Body: {
-        Html: {
-          Charset: 'UTF-8',
-          Data: msg,
+
+const sendEmailv1 = (from, to, subject, msg) => {
+  return new Promise(async (resolve, reject) => {
+    let params = {
+      Source: from,
+      Destination: {
+        ToAddresses: [
+          to
+        ],
+      },
+      ReplyToAddresses: [],
+      Message: {
+        Body: {
+          Html: {
+            Charset: 'UTF-8',
+            Data: msg,
+          },
+          Text: {
+            Charset: "UTF-8",
+            Data: msg
+          }
         },
-        Text: {
-          Charset: "UTF-8",
-          Data: msg
+        Subject: {
+          Charset: 'UTF-8',
+          Data: subject,
         }
       },
-      Subject: {
-        Charset: 'UTF-8',
-        Data: subject,
-      }
-    },
-  };
+    };
 
-  try {
-    const sendEmailCommand = new SendEmailCommand(params);
-    const res = await sesClient.send(sendEmailCommand);
-    console.log('Email has been sent! v3', res);
-  } catch (error) {
-    console.error(error);
-  }
+    try {
+      const sendEmailCommand = new SendEmailCommand(params);
+      const res = await sesClient.send(sendEmailCommand);
+      console.log('Email has been sent! v3', res);
+      return resolve(res);
+    } catch (error) {
+      console.error(error);
+      return reject(error);
+    }
+  });
 };
 
 // sendEmail("nischalkarn369369@gmail.com", "Sahil Karn");
-sendEmailv1("no-replymail.service@shopatbanau.com", "saikanepal@gmail.com", "Order:Confirmed", "Details");
+// sendEmailv1("no-replymail.service@shopatbanau.com", "saikanepal@gmail.com", "Order:Confirmed", "Details");
 
-// module.exports = {
-//   sendEmailv1
-// };
+module.exports = {
+  sendEmailv1
+};

@@ -5,6 +5,9 @@ const User = require('../Model/User-model');
 const crypto = require('crypto');
 const sendVerificationEmail = require('../utils/generateVerificationCode.js'); // Import the function
 const jwt = require('jsonwebtoken');
+const { accesskey, secretaccesskey } = require('../Email-Config-SES-AWS/EmailConfig.js');
+const { sendEmailv1 } = require('../Email-Config-SES-AWS/SendEmailV3.js');
+const { functionForgotPassword } = require('../Email-Config-SES-AWS/MailTemplates.js');
 // Secret key for bcrypt encryption
 const saltRounds = 10; // Number of salt rounds
 
@@ -74,7 +77,7 @@ const signIn = async (req, res) => {
             user.verificationCode = verificationCode;
             await user.save();
             sendVerificationEmail(email, verificationCode); // Resend verification email
-            res.status(403).json({message:"User not verified"});
+            res.status(403).json({ message: "User not verified" });
         }
 
         //token for local storage
@@ -428,8 +431,60 @@ const updateUserDetails = async (req, res) => {
 };
 
 
+/* Forgot Password */
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email)
+            throw new Error("[-] Email Required");
+        const user = await User.findOne({ email: email });
+        if (!user)
+            throw new Error("[-] User Not Found");
+        user.verificationCode = generateVerificationCode();
+        await user.save();
+        const response = await sendEmailv1("no-replymail.service@shopatbanau.com", email, "Subject: Your One-Time Password (OTP) to Access Banau", functionForgotPassword('User', user.verificationCode));
+        console.log(`[+] Email v3 :`, response);
+        return res.status(200).json({ message: 'Verification Sent Successfully', user: { name: user.name, email: user.email } });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
 
+const userForgorPasswordUpdated = async (req, res) => {
+    const { email, verificationCode, newPassword } = req.body;
 
+    try {
+        // Find the user by email
+        const user = await User.findOne({ email });
+        if (!user) {
+            throw { status: 404, message: 'User not found' };
+        }
+        // Check if verification code matches
+        if (user.verificationCode !== verificationCode) {
+            throw { status: 400, message: 'Invalid verification code' };
+        }
+        if (!newPassword)
+            throw { status: 400, message: 'Invalid verification password' };
+        user.password = await bcrypt.hash(newPassword, saltRounds);
+        await user.save();
+        //token for local storage
+        const token = jwt.sign({
+            userID: user.id,
+            email: user.email
+        }, process.env.JWT_KEY,
+            {
+                expiresIn: '24h'
+            });
+        if (!token) {
+            throw new Error("Signing Up Failed ,Please Try again Later");
+        }
+        res.status(200).json({ message: 'Password updated please login again' });
+    } catch (error) {
+        console.error(error.message);
+        const status = error.status || 500;
+        res.status(status).json({ message: error.message });
+    }
+};
 
 // Export the functions
-module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee, getLoggedInUser, getLoggedInUserDetails, updateUserDetails };
+module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee, getLoggedInUser, getLoggedInUserDetails, updateUserDetails, forgotPassword, userForgorPasswordUpdated };

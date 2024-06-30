@@ -60,6 +60,7 @@ const createStore = async (req, res) => {
         });
 
         if (dataExists) {
+            console.log("already exist");
             return res.status(400).json({ message: "Store already exists" });
         }
 
@@ -174,7 +175,7 @@ const getStore = async (req, res) => {
                     storeName
                 ]
             }
-        })
+        });
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
@@ -193,7 +194,7 @@ const getStore = async (req, res) => {
         await store.populate({
             path: 'products',
             options: { limit: limit }
-        })
+        });
 
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
@@ -417,7 +418,7 @@ const updateStore = async (req, res) => {
         console.error('Error updating store:', error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
-}
+};
 
 const deleteStore = async (req, res) => {
     try {
@@ -475,9 +476,10 @@ const deleteStore = async (req, res) => {
 };
 
 
+
 const updateDashboardStore = async (req, res) => {
     const { storeID } = req.params;
-    console.log("body is", req.body)
+    console.log("body is", req.body);
     const newData = req.body;
     const transactionLog = req.body.transactionLog;
     console.log("printing header", { user: req.userData, newData, transactionLog });
@@ -573,10 +575,51 @@ const updateDashboardStoreAdminBanau = async (req, res) => {
         return res.status(200).json({ updatedStore, message: 'Update successful' });
     } catch (error) {
         // Handle any errors that occurred during the update process
+        console.error('Error updating store Admin banau:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
+
+
+const disableStore = async (req, res) => {
+    try {
+        const { storeID } = req.params;
+        if (!storeID)
+            throw new Error("[-] Store Require To Diable");
+        const store = await Store.findByIdAndUpdate(
+            storeID,
+            { $set: { isDisabled: true } },
+            { new: true }
+        );
+        if (!store)
+            throw new Error("[+] Invalid Store");
+        // TODO -> Here Send Email To The Store Has been disabled and send message 
+        return res.status(200).json({ store, message: `Store ${store.name} disabled` });
+    } catch (error) {
         console.error('Error updating store:', error);
         return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
     }
 };
+const activateStore = async (req, res) => {
+    try {
+        const { storeID } = req.params;
+        if (!storeID)
+            throw new Error("[-] Store Require To Diable");
+        const store = await Store.findByIdAndUpdate(
+            storeID,
+            { $set: { isDisabled: false } },
+            { new: true }
+        );
+        if (!store)
+            throw new Error("[+] Invalid Store");
+        // TODO -> Here Send Email To The Store Has been re activated and send message 
+        return res.status(200).json({ store, message: `Store ${store.name} enabled` });
+    } catch (error) {
+        console.error('Error updating store:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
+
 
 
 const payStoreNow = async (req, res) => {
@@ -588,6 +631,7 @@ const payStoreNow = async (req, res) => {
     try {
         console.log({ user: req.userData, newData, transactionLog });
         const store = await Store.findById(storeID);
+
         if (newData.payment > store.pendingAmount)
             throw new Error("[-] Invalid Payment Type");
 
@@ -613,30 +657,34 @@ const payStoreNow = async (req, res) => {
 };
 
 const payDueAmount = async (req, res) => {
-    console.log(req.body);
-    const newEsewaTransaction = new esewaTransaction(req.body.data);
-    const savedEsewaTransaction = await newEsewaTransaction.save();
-    // Assuming you need data from savedPayment for formData
-    const signature = createSignature(
-        `total_amount=${savedEsewaTransaction.amount},transaction_uuid=${savedEsewaTransaction._id},product_code=${process.env.PRODUCT_CODE}`
-    );
-    const formData = {
-        amount: savedEsewaTransaction.amount,
-        failure_url: req.body.fail || process.env.FAILURE_URL,
-        product_delivery_charge: "0",
-        product_service_charge: "0",
-        product_code: process.env.PRODUCT_CODE,
-        signature: signature,
-        signed_field_names: "total_amount,transaction_uuid,product_code",
-        success_url: req.body.success || process.env.SUCCESS_URL,
-        tax_amount: "0",
-        total_amount: savedEsewaTransaction.amount,
-        transaction_uuid: savedEsewaTransaction._id,
-    };
+    try {
+        console.log(req.body);
+        const newEsewaTransaction = new esewaTransaction(req.body.data);
+        const savedEsewaTransaction = await newEsewaTransaction.save();
+        // Assuming you need data from savedPayment for formData
+        const signature = createSignature(
+            `total_amount=${savedEsewaTransaction.amount},transaction_uuid=${savedEsewaTransaction._id},product_code=${process.env.PRODUCT_CODE}`
+        );
+        const formData = {
+            amount: savedEsewaTransaction.amount,
+            failure_url: req.body.fail || process.env.FAILURE_URL,
+            product_delivery_charge: "0",
+            product_service_charge: "0",
+            product_code: process.env.PRODUCT_CODE,
+            signature: signature,
+            signed_field_names: "total_amount,transaction_uuid,product_code",
+            success_url: req.body.success || process.env.SUCCESS_URL,
+            tax_amount: "0",
+            total_amount: savedEsewaTransaction.amount,
+            transaction_uuid: savedEsewaTransaction._id,
+        };
 
-    res.json({ message: "Order Created Successfully", payment: savedEsewaTransaction, formData });
-
-}
+        res.json({ message: "Order Created Successfully", payment: savedEsewaTransaction, formData });
+    } catch (error) {
+        console.log(`[-] Error while paying dueAmount:`, error);
+        return res.status(500).json({ message: 'An error occurred while updating the skin', error: error.message });
+    }
+};
 
 
 
@@ -724,6 +772,8 @@ const updateDueAmount = async (req, res) => {
         if (!order) {
             return res.status(404).json({ message: "Order not found" });
         }
+        if (order.used)
+            return res.status(200).json({ message: 'payment done', order: order });
         console.log(order);
 
         const store = await Store.findById(order.store);
@@ -733,14 +783,20 @@ const updateDueAmount = async (req, res) => {
 
         console.log(store);
 
-        store.dueAmount -= order.amount;
-        console.log(store.dueAmount);
+
 
         if (!store.payments) {
             store.payments = [];
         }
         store.payments.push(order._id);
 
+        // Update the due amount in the order (assuming there's a dueAmount field)
+
+        store.dueAmount -= order.amount;
+        console.log(store.dueAmount);
+        order.used = true;
+        store.isDisabled = false;
+        await order.save();
         await store.save();
 
         // Update Banau storeSales
@@ -943,6 +999,7 @@ const getStoreByFilter = async (req, res) => {
             esewa: 1,
             bank: 1,
             khalti: 1,
+            isDisabled: 1,
         })
             .populate('staff', 'name')
             .populate('owner', 'name')
@@ -965,13 +1022,6 @@ const getStoreByFilter = async (req, res) => {
     }
 };
 
-
-
-
-
-
-
-
 module.exports = {
     createStore,
     getStore,
@@ -987,5 +1037,7 @@ module.exports = {
     updateDashboardStoreAdminBanau,
     payStoreNow,
     payDueAmount,
-    updateDueAmount
+    updateDueAmount,
+    disableStore,
+    activateStore
 };

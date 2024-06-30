@@ -47,6 +47,7 @@ const createOrder = async (req, res) => {
                 if (!product) {
                     throw new Error(`Product with ID ${item.product} not found`);
                 }
+                item.productName = product.name;
                 console.log("item10-1", item.selectedVariant[0].options?.name);
                 // Check for stock availability
                 if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default' || item.selectedVariant[0].options?.name === 'default') {
@@ -92,7 +93,7 @@ const createOrder = async (req, res) => {
                     throw new Error('Invalid Esewa transaction ID');
                 }
             }
-
+            console.log("populated is",populatedCart);
             // Create order document
             const newOrder = new Order({
                 fullName,

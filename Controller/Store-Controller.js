@@ -776,6 +776,7 @@ const updateDueAmount = async (req, res) => {
         store.dueAmount -= order.amount;
         console.log(store.dueAmount);
         order.used = true;
+        store.isDisabled = false;
         await order.save();
         await store.save();
 

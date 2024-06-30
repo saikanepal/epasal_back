@@ -106,6 +106,7 @@ const storeSchema = new mongoose.Schema({
             }
         ]
     },
+
     inventory: { type: Number, default: 0 },
     revenueGenerated: { type: Number, default: 0 },
     orders: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Order' }],
@@ -125,7 +126,7 @@ const storeSchema = new mongoose.Schema({
         enum: ['Silver', 'Gold', 'Platinum'],
         default: 'Silver'
     },
-    logs:  [{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
+    logs: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Logs' }],
     subscriptionExpiry: {
         type: Date,
         default: null
@@ -177,11 +178,80 @@ const storeSchema = new mongoose.Schema({
             value: { type: Number, default: 0 }
         }
     ],
+    isDisabled: { type: Boolean, default: false },
     fonts: { type: Object },
     expectedDeliveryTime: { type: String, default: '3 to 4 business days' },
     expectedDeliveryPrice: { type: Number, default: 100 },
     liveChatSource: { type: String, default: '' },
 }, { timestamps: true });
+
+
+// Middleware to prevent updating if the store is disabled
+const checkStoreDisabled = async function (next) {
+    try {
+        // Skip the check if the custom property is set
+        console.log(`[+] Options:`, this.options);
+        if (this.options.skipDisabledCheck) {
+            return next();
+        }
+        console.log(`[+] I am checkStoreDisabled `);
+        const store = await this.model.findOne(this.getQuery());
+        console.log(`[+] Check Is Disabled`, { name: store.name, isDisabled: store.isDisabled });
+        if (store && store.isDisabled) {
+            const error = new Error('[+] Store is disabled. Please pay the dueAmount to enable it.');
+            error.status = 403;
+            return next(error);
+        }
+        next();
+    } catch (error) {
+        next(error);
+    }
+};
+
+// // Apply the middleware to various update operations
+// storeSchema.pre('findOneAndUpdate', checkStoreDisabled);
+// storeSchema.pre('findByIdAndUpdate', checkStoreDisabled);
+// storeSchema.pre('updateOne', checkStoreDisabled);
+// storeSchema.pre('updateMany', checkStoreDisabled);
+
+
+// Mongoose middleware: Pre hook to check and update subscription status and expiry
+storeSchema.pre('save', async function (next) {
+
+    // Check if subscriptionExpiry is defined and if it has passed
+    if (this.subscriptionExpiry && this.subscriptionExpiry <= new Date()) {
+        this.subscriptionStatus = 'Silver'; // Set subscriptionStatus to Silver
+        this.subscriptionExpiry = null; // Set subscriptionExpiry to null
+    }
+    // If isDisabled is true, throw an error
+    // if (this.isDisabled) {
+    //     console.log(`[+] I am pre save isDisabled `);
+    //     const error = new Error('Please pay the dueAmount');
+    //     next(error);
+    // }
+
+    next();
+});
+
+// Mongoose middleware: Post hook to check and update isDisabled field
+storeSchema.post('save', async function (doc, next) {
+    try {
+        // Check if dueAmount exceeds 5000 and update isDisabled if necessary
+        if (doc.dueAmount > 5000 && !doc.isDisabled) {
+            console.log(`[+] I am post save isDisabled `);
+            doc.isDisabled = true;
+            await doc.save();
+            console.log(`[+] Store has been disabled : `, { doc });
+        }
+        if (doc.dueAmount < 5000 && doc.isDisabled) {
+            doc.isDisabled = true;
+            await doc.save();
+        }
+        next();
+    } catch (error) {
+        next(error);
+    }
+});
 
 storeSchema.pre('remove', async function (next) {
     try {
@@ -191,16 +261,6 @@ storeSchema.pre('remove', async function (next) {
     } catch (err) {
         next(err);
     }
-});
-
-// Mongoose middleware: Pre hook to check and update subscription status and expiry
-storeSchema.pre('save', async function (next) {
-    // Check if subscriptionExpiry is defined and if it has passed
-    if (this.subscriptionExpiry && this.subscriptionExpiry <= new Date()) {
-        this.subscriptionStatus = 'Silver'; // Set subscriptionStatus to Silver
-        this.subscriptionExpiry = null; // Set subscriptionExpiry to null
-    }
-    next();
 });
 
 const Store = mongoose.model('Store', storeSchema);

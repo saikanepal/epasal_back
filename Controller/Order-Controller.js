@@ -5,6 +5,8 @@ const EsewaTransaction = require('../Model/Esewa-model');
 const mongoose = require('mongoose');
 const { response } = require('express');
 const crypto = require("crypto");
+const Banau = require("../Model/Banau");
+
 require('dotenv').config();
 
 
@@ -45,7 +47,7 @@ const createOrder = async (req, res) => {
                 if (!product) {
                     throw new Error(`Product with ID ${item.product} not found`);
                 }
-                console.log("item10-1",item.selectedVariant[0].options?.name);
+                console.log("item10-1", item.selectedVariant[0].options?.name);
                 // Check for stock availability
                 if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default' || item.selectedVariant[0].options?.name === 'default') {
                     // Default to handling without variants
@@ -59,18 +61,18 @@ const createOrder = async (req, res) => {
                     if (!variant) {
                         throw new Error(`Variant ${item.selectedVariant[0].name} not found for product with ID ${item.product}`);
                     }
-                    
+
                     console.log("item is ", item);
                     console.log("variant is ", variant);
                     console.log("option is", item?.selectedVariant[0]?.options);
-                    
+
                     // Skip validation if variant or option name is 'default'
                     if (item.selectedVariant[0].name !== 'default' && item.selectedVariant[0].options.name !== 'default') {
                         const option = variant.options.find(o => o.name === item.selectedVariant[0].options.name);
                         if (!option) {
                             // throw new Error(`Option ${item.selectedVariant[0].options.name} not found in variant ${item.selectedVariant[0].name} for product with ID ${item.product}`);
                         }
-                        
+
                         if (item.count > option.count) {
                             throw new Error(`Option ${item.selectedVariant[0].options.name} in variant ${item.selectedVariant[0].name} for product with ID ${item.product} is out of stock`);
                         }
@@ -129,6 +131,23 @@ const createOrder = async (req, res) => {
                     store.revenueGenerated += totalPrice;
                     const pendingAmountIncrease = 0.97 * totalPrice;
                     store.pendingAmount += pendingAmountIncrease;
+
+
+                    // Update Banau storeSales
+                    const banau = await Banau.findOne({ name: 'Banau' });
+                    if (banau) {
+                        banau.sales += pendingAmountIncrease;
+                        const storeSale = banau.storeSales.find(s => s.storeName === store.name);
+                        if (storeSale) {
+                            storeSale.revenueGenerated += pendingAmountIncrease;
+                        } else {
+                            banau.storeSales.push({
+                                storeName: store.name,
+                                revenueGenerated: pendingAmountIncrease
+                            });
+                        }
+                        await banau.save();
+                    }
                 }
 
                 // Check if the order phone number is unique
@@ -144,7 +163,7 @@ const createOrder = async (req, res) => {
                         throw new Error(`Product with ID ${item.product} not found`);
                     }
 
-                    if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default' ||  item.selectedVariant[0]?.options.name === 'default') {
+                    if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default' || item.selectedVariant[0]?.options.name === 'default') {
                         // Default scenario: no variants specified
                         product.inventory -= item.count;
                         product.soldQuantity += item.count;
@@ -338,9 +357,12 @@ const updateOrder = async (req, res) => {
 
         // Handle order cancellation scenario
         if (status === 'Cancelled') {
+            if (order.paymentMethod === 'esewa') {
+                return res.status(405).json({ message: 'Orders Paid With Esewa Can Not be cancelled , please contact banau staff for further assistance' });
+            }
             // Update the order status to Cancelled
             updateData.status = 'Cancelled';
-
+            console.log("order is", order);
             // Update store metrics
             const store = await Store.findById(storeID).session(session);
             if (!store) {
@@ -348,10 +370,27 @@ const updateOrder = async (req, res) => {
                 return res.status(404).json({ message: `Store with ID ${storeID} not found` });
             }
 
-            // Adjust store revenue and due amount
-            store.revenueGenerated -= order.totalPrice;
-            const dueAmountDecrease = 0.03 * order.totalPrice;
-            store.dueAmount -= dueAmountDecrease;
+            if (order.paymentMethod === 'CashOnDelivery') {
+                // Adjust store revenue and due amount
+                store.revenueGenerated -= order.totalPrice;
+                const dueAmountDecrease = 0.03 * order.totalPrice;
+                store.dueAmount -= dueAmountDecrease;
+            } else if (order.paymentMethod === 'esewa') {
+                store.revenueGenerated -= order.totalPrice;
+                const pendingAmountIncrease = 0.03 * order.totalPrice;
+                store.pendingAmount += pendingAmountIncrease;
+                // Update Banau storeSales
+                const banau = await Banau.findOne({ name: 'Banau' });
+                if (banau) {
+                    banau.sales -= pendingAmountIncrease;
+                    const storeSale = banau.storeSales.find(s => s.storeName === store.name);
+                    if (storeSale) {
+                        storeSale.revenueGenerated -= pendingAmountIncrease;
+                    }
+                    // else case should not be possible?
+                    await banau.save();
+                }
+            }
 
             // Check if the order phone number is unique and adjust customer count
             const isUniquePhoneNumber = (await Order.countDocuments({ phoneNumber: order.phoneNumber }).session(session)) === 1;
@@ -362,8 +401,8 @@ const updateOrder = async (req, res) => {
             await store.save({ session });
 
             // Update product data (reverse changes made during order creation)
-        
-    
+
+
         }
 
         // Update the order status and other fields in the database

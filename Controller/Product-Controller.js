@@ -61,21 +61,24 @@
     
     const updateProduct = async (req, res) => {
       const { id, updates } = req.body;
+      console.log(req.body);
       try {
         const productOld = await Product.findById(id);
         
+
+
         if (!productOld) {
           return res.status(404).json({ success: false, message: "Product not found" });
         }
 
-        if (productOld.image && productOld.image.imageId) {
-          await cloudinary.uploader.destroy(productOld.image.imageId);
-        }
+        if ( updates.image.imageID  &&   productOld.image && productOld.image.imageID && productOld.image.imageID !== updates.image.imageID) {
+          // await cloudinary.uploader.destroy(productOld.image.imageId);
+        } 
         // const store = await Store.findById(storeId);
         for(items in productOld.variant){
           for(item in items.options){
             if(item.image.imageId!=null){
-              await cloudinary.uploader.destroy(item.image.imageId);
+              // await cloudinary.uploader.destroy(item.image.imageId);
             }
           }
         }
@@ -202,8 +205,8 @@
     
     const getAllStoreProductByPagination = async (req, res) => {
       const { storeId } = req.params;
-      const { page = 1, limit = 10, search = '', sortOrder = 'asc', productId, minPrice, maxPrice } = req.query;
-    
+      const { page = 1, limit = 2, search = '', sortOrder = 'asc', productId, minPrice, maxPrice } = req.query;
+        console.log(req.query);
       try {
         // Initialize search conditions for products
         const searchConditions = [];
@@ -218,8 +221,6 @@
               { name: { $regex: term, $options: 'i' } },
               { description: { $regex: term, $options: 'i' } }
             ];
-    
-            // Add additional search fields here if needed
     
             if (mongoose.Types.ObjectId.isValid(term)) {
               termConditions.push({ _id: mongoose.Types.ObjectId(term) });
@@ -247,7 +248,7 @@
     
         // Ensure that the limit respects both pagination limit and subscription limit
         const effectiveLimit = Math.min(parseInt(limit), limitPerSubscription);
-    
+        console.log("effective",effectiveLimit);
         // Extract product IDs from populated store
         const productIds = store.products.map(product => product._id);
     
@@ -272,17 +273,21 @@
           matchCriteria.$and.push({ price: { $lte: parseFloat(maxPrice) } });
         }
     
-        // Perform aggregation to fetch products
+        // Calculate the skip value
+        const skip = (page-1) * effectiveLimit;
+    
+        // Perform aggregation to fetch products with pagination
         const products = await Product.aggregate([
           { $match: matchCriteria },
           { $sort: { revenueGenerated: sortOrder === 'asc' ? 1 : -1 } },
-          { $skip: (parseInt(page) - 1) * parseInt(effectiveLimit) },
-          { $limit: parseInt(effectiveLimit) }
+          { $skip: skip },
+          { $limit: effectiveLimit }
         ]);
+    
         // Count total matching products
         const totalProducts = await Product.countDocuments(matchCriteria);
         const totalPages = Math.ceil(totalProducts / effectiveLimit);
-    
+        console.log(products);
         // Send response
         res.status(200).json({
           products,
@@ -296,6 +301,7 @@
         res.status(500).json({ message: 'Error fetching store products', error: error.message });
       }
     };
+    
     
     
     const getStoreProducts = async (req, res) => {
@@ -350,7 +356,7 @@
         }
     
         const totalProducts = await Product.countDocuments({ ...filterConditions, _id: { $in: store.products } });
-    
+        
         return res.status(200).json({
           success: true,
           products: store.products,
@@ -367,6 +373,48 @@
     };
     
     
+    const getStoreAndProduct = async (req, res) => {
+      const { storeName, productID } = req.params;
+    
+      try {
+        const normalizedStoreName = storeName.trim().replace(/\s+/g, '').toLowerCase();
+    
+        // Find the store by normalized name and populate only the specific product
+        const store = await Store.findOne({
+          $expr: {
+            $eq: [
+              { $toLower: { $replaceAll: { input: "$name", find: " ", replacement: "" } } },
+              normalizedStoreName
+            ]
+          },
+          products: { $elemMatch: { $eq: mongoose.Types.ObjectId(productID) } }
+        }).populate({
+          path: 'products',
+          match: { _id: mongoose.Types.ObjectId(productID) }
+        });
+    
+        if (!store) {
+          return res.status(404).json({ success: false, message: "Store not found or product not found in the specified store" });
+        }
+    
+        // Ensure that the product is populated
+        const populatedProduct = store.products.find(product => product._id.toString() === productID);
+    
+        if (!populatedProduct) {
+          return res.status(404).json({ success: false, message: "Product not found" });
+        }
+    
+        return res.status(200).json({
+          success: true,
+          store,
+          product: populatedProduct
+        });
+    
+      } catch (err) {
+        console.error(err);
+        return res.status(400).json({ success: false, message: "Error in fetching store and product" });
+      }
+    };
     
   
 
@@ -379,7 +427,8 @@
       getAllProductData,
       // getProductByName,
       getAllStoreProductByPagination,
-      getStoreProducts
+      getStoreProducts,
+      getStoreAndProduct,
     };
 
   // const addProduct=(req,res)=>{

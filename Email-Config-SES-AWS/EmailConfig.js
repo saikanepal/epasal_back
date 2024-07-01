@@ -1,9 +1,12 @@
 
 // DONT USE THESE ONLY FOR DEVELOPMENT
-const accesskey = ``;
-const secretaccesskey = ``;
+const dotenv = require('dotenv');
+dotenv.config();
+
+const accesskey = process.env.SES_ACCESSKEY;
+const secretaccesskey = process.env.SES_SECRETACCESSKEY;
 const sender = '';
-const region = '';
+const region = process.env.SES_REGION;
 
 module.exports = {
     accesskey,

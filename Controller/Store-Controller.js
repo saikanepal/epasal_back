@@ -7,9 +7,12 @@ const mongoose = require('mongoose');
 const TransactionLogs = require('../Model/logs-model');
 const moment = require('moment-timezone');
 const { calculateDate, getCurrentDateTime, calculateDatev1 } = require('../utils/calculateDate');
+const crypto = require("crypto");
+const Banau = require("../Model/Banau");
+
+require('dotenv').config();
 
 const createStore = async (req, res) => {
-
     const {
         name,
         logo,
@@ -33,9 +36,20 @@ const createStore = async (req, res) => {
         fonts,
         featuredProducts,
     } = req.body.store;
+
     try {
-        // Create products if products data is provided
-        const reqname = req.body.store.name.trim().replace(/\s+/g, '').toLowerCase(); // Remove all spaces and convert to lowercase
+        // Check if the user already owns a store
+        const user = await User.findById(req.userData.userID);
+        const isOwner = user.roles.some(role => role.role === 'Owner');
+
+        if (isOwner) {
+            return res.status(400).json({ message: "User can only own one store" });
+        }
+
+        // Remove all spaces and convert to lowercase for the store name
+        const reqname = req.body.store.name.trim().replace(/\s+/g, '').toLowerCase();
+
+        // Check if a store with the same name already exists
         const dataExists = await Store.findOne({
             $expr: {
                 $eq: [
@@ -43,15 +57,16 @@ const createStore = async (req, res) => {
                     reqname
                 ]
             }
-        })
+        });
+
         if (dataExists) {
-            console.log("already exist")
+            console.log("already exist");
             return res.status(400).json({ message: "Store already exists" });
         }
+
         let savedProducts = [];
 
         if (products && products.length > 0) {
-            // Iterate through products and create them
             for (const productData of products) {
                 const {
                     name,
@@ -67,7 +82,6 @@ const createStore = async (req, res) => {
                     discount
                 } = productData;
 
-                // Create a new product instance
                 const newProduct = new Product({
                     name,
                     description,
@@ -82,12 +96,11 @@ const createStore = async (req, res) => {
                     discount
                 });
 
-                // Save the product to the database
                 const savedProduct = await newProduct.save();
                 savedProducts.push(savedProduct);
             }
         }
-        // Create a new store instance
+
         const newStore = new Store({
             name,
             logo: {
@@ -100,7 +113,7 @@ const createStore = async (req, res) => {
             products: savedProducts,
             location,
             phoneNumber,
-            email: email,
+            email,
             color,
             secondaryBanner: secondaryBanner,
             cart,
@@ -120,22 +133,17 @@ const createStore = async (req, res) => {
             },
             featuredProducts,
             fonts,
-            owner: req.userData.userID // Set admin as req.userData.userID
+            owner: req.userData.userID
         });
 
-        // Save the store to the database
         await newStore.save();
 
-        // Update user document to include the new store ID and the Owner role
-        const user = await User.findById(req.userData.userID);
-        if (user) {
-            user.stores.push(newStore._id); // Add new store ID to user's stores array
-            user.roles.push({
-                storeId: newStore._id,
-                role: 'Owner'
-            }); // Add new role with storeId and role 'Owner'
-            await user.save();
-        }
+        user.stores.push(newStore._id);
+        user.roles.push({
+            storeId: newStore._id,
+            role: 'Owner'
+        });
+        await user.save();
 
         res.status(201).json({ message: 'Store created successfully', store: newStore });
     } catch (error) {
@@ -145,7 +153,16 @@ const createStore = async (req, res) => {
 };
 
 
+const createSignature = (message) => {
+    const secret = process.env.SECRET;
+    // Create an HMAC-SHA256 hash
+    const hmac = crypto.createHmac("sha256", secret);
+    hmac.update(message);
 
+    // Get the digest in base64 format
+    const hashInBase64 = hmac.digest("base64");
+    return hashInBase64;
+};
 
 const getStore = async (req, res) => {
     try {
@@ -158,7 +175,7 @@ const getStore = async (req, res) => {
                     storeName
                 ]
             }
-        })
+        });
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
@@ -177,7 +194,7 @@ const getStore = async (req, res) => {
         await store.populate({
             path: 'products',
             options: { limit: limit }
-        })
+        });
 
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
@@ -198,7 +215,7 @@ const getStoreByName = async (req, res) => {
                     storeName
                 ]
             }
-        }).populate('owner');
+        }).populate('owner mostSoldItem');
 
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
@@ -401,7 +418,7 @@ const updateStore = async (req, res) => {
         console.error('Error updating store:', error);
         res.status(500).send({ error: 'Internal Server Error' });
     }
-}
+};
 
 const deleteStore = async (req, res) => {
     try {
@@ -459,12 +476,13 @@ const deleteStore = async (req, res) => {
 };
 
 
+
 const updateDashboardStore = async (req, res) => {
     const { storeID } = req.params;
-    console.log("body is",req.body)
+    console.log("body is", req.body);
     const newData = req.body;
     const transactionLog = req.body.transactionLog;
-    console.log( "printing header",{ user: req.userData, newData, transactionLog });
+    console.log("printing header", { user: req.userData, newData, transactionLog });
     try {
         // Fetch the old store data to check for existing images
         const oldStore = await Store.findById(storeID);
@@ -481,7 +499,7 @@ const updateDashboardStore = async (req, res) => {
                 await cloudinary.uploader.destroy(oldStore.bank.qr.imageID);
             }
 
-            if (newData?.bank &&   oldStore.khalti && oldStore.khalti.qr && oldStore.khalti.qr.imageUrl && oldStore.khalti.qr.imageUrl !== newData?.khalti?.qr?.imageUrl) {
+            if (newData?.bank && oldStore.khalti && oldStore.khalti.qr && oldStore.khalti.qr.imageUrl && oldStore.khalti.qr.imageUrl !== newData?.khalti?.qr?.imageUrl) {
                 console.log("Deleting old Khalti image:", oldStore.khalti.qr.imageID);
                 await cloudinary.uploader.destroy(oldStore.khalti.qr.imageID);
             }
@@ -507,6 +525,7 @@ const updateDashboardStore = async (req, res) => {
         return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
     }
 };
+
 const updateDashboardStoreAdminBanau = async (req, res) => {
     const { storeID } = req.params;
     console.log({ body: req.body });
@@ -556,10 +575,51 @@ const updateDashboardStoreAdminBanau = async (req, res) => {
         return res.status(200).json({ updatedStore, message: 'Update successful' });
     } catch (error) {
         // Handle any errors that occurred during the update process
+        console.error('Error updating store Admin banau:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
+
+
+const disableStore = async (req, res) => {
+    try {
+        const { storeID } = req.params;
+        if (!storeID)
+            throw new Error("[-] Store Require To Diable");
+        const store = await Store.findByIdAndUpdate(
+            storeID,
+            { $set: { isDisabled: true } },
+            { new: true }
+        );
+        if (!store)
+            throw new Error("[+] Invalid Store");
+        // TODO -> Here Send Email To The Store Has been disabled and send message 
+        return res.status(200).json({ store, message: `Store ${store.name} disabled` });
+    } catch (error) {
         console.error('Error updating store:', error);
         return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
     }
 };
+const activateStore = async (req, res) => {
+    try {
+        const { storeID } = req.params;
+        if (!storeID)
+            throw new Error("[-] Store Require To Diable");
+        const store = await Store.findByIdAndUpdate(
+            storeID,
+            { $set: { isDisabled: false } },
+            { new: true }
+        );
+        if (!store)
+            throw new Error("[+] Invalid Store");
+        // TODO -> Here Send Email To The Store Has been re activated and send message 
+        return res.status(200).json({ store, message: `Store ${store.name} enabled` });
+    } catch (error) {
+        console.error('Error updating store:', error);
+        return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
+
 
 
 const payStoreNow = async (req, res) => {
@@ -571,6 +631,7 @@ const payStoreNow = async (req, res) => {
     try {
         console.log({ user: req.userData, newData, transactionLog });
         const store = await Store.findById(storeID);
+
         if (newData.payment > store.pendingAmount)
             throw new Error("[-] Invalid Payment Type");
 
@@ -595,43 +656,64 @@ const payStoreNow = async (req, res) => {
     }
 };
 
+const payDueAmount = async (req, res) => {
+    try {
+        console.log(req.body);
+        const newEsewaTransaction = new esewaTransaction(req.body.data);
+        const savedEsewaTransaction = await newEsewaTransaction.save();
+        // Assuming you need data from savedPayment for formData
+        const signature = createSignature(
+            `total_amount=${savedEsewaTransaction.amount},transaction_uuid=${savedEsewaTransaction._id},product_code=${process.env.PRODUCT_CODE}`
+        );
+        const formData = {
+            amount: savedEsewaTransaction.amount,
+            failure_url: req.body.fail || process.env.FAILURE_URL,
+            product_delivery_charge: "0",
+            product_service_charge: "0",
+            product_code: process.env.PRODUCT_CODE,
+            signature: signature,
+            signed_field_names: "total_amount,transaction_uuid,product_code",
+            success_url: req.body.success || process.env.SUCCESS_URL,
+            tax_amount: "0",
+            total_amount: savedEsewaTransaction.amount,
+            transaction_uuid: savedEsewaTransaction._id,
+        };
+
+        res.json({ message: "Order Created Successfully", payment: savedEsewaTransaction, formData });
+    } catch (error) {
+        console.log(`[-] Error while paying dueAmount:`, error);
+        return res.status(500).json({ message: 'An error occurred while updating the skin', error: error.message });
+    }
+};
 
 
 
 const updateSubscription = async (req, res) => {
     const { transactionID } = req.params;
     try {
-        // Fetch the transaction data to check for existing details
         const savedTransaction = await esewaTransaction.findById(transactionID);
         if (!savedTransaction) {
             return res.status(404).json({ message: 'Transaction not found' });
         }
 
-        // Populate the store and select subscriptionStatus and subscriptionExpiry fields
         await savedTransaction.populate({
             path: 'store',
-            select: 'subscriptionStatus subscriptionExpiry'
-        })
-
-        console.log("Transaction record:", savedTransaction);
+            select: 'subscriptionStatus subscriptionExpiry name payments'
+        });
 
         if (savedTransaction.used) {
             return res.status(401).json({ message: 'Payment already processed' });
         }
 
         savedTransaction.used = true;
-
         const store = savedTransaction.store;
         if (!store) {
             return res.status(404).json({ message: 'Store not found' });
         }
 
-        // Update store's subscription status
         store.subscriptionStatus = savedTransaction.subscription;
 
-        // Set new subscriptionExpiry based on savedTransaction.duration or default to today's date
         let newExpiryDate;
-
         switch (savedTransaction.duration) {
             case 'monthly':
                 newExpiryDate = store.subscriptionExpiry ? new Date(store.subscriptionExpiry) : new Date();
@@ -649,18 +731,93 @@ const updateSubscription = async (req, res) => {
                 return res.status(400).json({ message: 'Invalid duration type' });
         }
 
-        // Update store's subscriptionExpiry
         store.subscriptionExpiry = newExpiryDate;
+        if (!store.payments) {
+            store.payments = [];
+        }
+        store.payments.push(savedTransaction._id);
 
-        // Save the updated store data
         const updatedStore = await store.save();
 
-        // Return the updated store data
+        // Update Banau storeSales
+        const banau = await Banau.findOne({ name: 'Banau' });
+        if (banau) {
+            banau.sales += savedTransaction.amount;
+            const storeSale = banau.storeSales.find(s => s.storeName === store.name);
+            if (storeSale) {
+                storeSale.revenueGenerated += savedTransaction.amount;
+            } else {
+                banau.storeSales.push({
+                    storeName: store.name,
+                    revenueGenerated: savedTransaction.amount
+                });
+            }
+            await banau.save();
+        }
+
         return res.status(200).json({ updatedStore, message: 'Update successful' });
     } catch (error) {
-        // Handle any errors that occurred during the update process
         console.error('Error updating store:', error);
         return res.status(500).json({ message: 'An error occurred while updating the store', error: error.message });
+    }
+};
+
+
+const updateDueAmount = async (req, res) => {
+    const { orderId } = req.params;
+    const { amount } = req.body;
+    console.log("inside update due amount");
+    try {
+        const order = await esewaTransaction.findById(orderId);
+        if (!order) {
+            return res.status(404).json({ message: "Order not found" });
+        }
+        if (order.used)
+            return res.status(200).json({ message: 'payment done', order: order });
+        console.log(order);
+
+        const store = await Store.findById(order.store);
+        if (!store) {
+            return res.status(404).json({ message: "Store not found" });
+        }
+
+        console.log(store);
+
+
+
+        if (!store.payments) {
+            store.payments = [];
+        }
+        store.payments.push(order._id);
+
+        // Update the due amount in the order (assuming there's a dueAmount field)
+
+        store.dueAmount -= order.amount;
+        console.log(store.dueAmount);
+        order.used = true;
+        store.isDisabled = false;
+        await order.save();
+        await store.save();
+
+        // Update Banau storeSales
+        const banau = await Banau.findOne({ name: 'Banau' });
+        if (banau) {
+            banau.sales += order.amount;
+            const storeSale = banau.storeSales.find(s => s.storeName === store.name);
+            if (storeSale) {
+                storeSale.revenueGenerated += order.amount;
+            } else {
+                banau.storeSales.push({
+                    storeName: store.name,
+                    revenueGenerated: order.amount
+                });
+            }
+            await banau.save();
+        }
+
+        res.status(200).json({ message: "Due amount updated successfully", order });
+    } catch (error) {
+        res.status(500).json({ message: "An error occurred", error: error.message });
     }
 };
 
@@ -668,13 +825,11 @@ const updateSubscription = async (req, res) => {
 const updateSkin = async (req, res) => {
     const { transactionID } = req.params;
     try {
-        // Fetch the transaction data to check for existing details
         const savedTransaction = await esewaTransaction.findById(transactionID);
         if (!savedTransaction) {
             return res.status(404).json({ message: 'Transaction not found' });
         }
 
-        // Check if the transaction has already been used
         if (savedTransaction.used) {
             return res.status(401).json({ message: 'Payment has already been processed' });
         }
@@ -682,10 +837,9 @@ const updateSkin = async (req, res) => {
         savedTransaction.used = true;
         await savedTransaction.save();
 
-        // Populate the store and select necessary fields
         await savedTransaction.populate({
             path: 'store',
-            select: 'componentSkin'
+            select: 'componentSkin name payments'
         });
 
         const store = savedTransaction.store;
@@ -693,11 +847,9 @@ const updateSkin = async (req, res) => {
             return res.status(404).json({ message: 'Store not found' });
         }
 
-        // Extract skin details from savedTransaction
         const { skinType, name } = savedTransaction.skin;
 
-        let skinAdded = false; // Track if skin was added
-        // Update skinInventory in componentSkin
+        let skinAdded = false;
         store.componentSkin.forEach(component => {
             if (component.skinType === skinType) {
                 if (!component.skinInventory.includes(name)) {
@@ -714,13 +866,31 @@ const updateSkin = async (req, res) => {
             return res.status(400).json({ message: 'Skin was not added. Possible duplicate or mismatch in skinType.' });
         }
 
-        // Save the updated store
+        if (!store.payments) {
+            store.payments = [];
+        }
+        store.payments.push(savedTransaction._id);
+
         const updatedStore = await store.save();
 
-        // Return the updated store data
+        // Update Banau storeSales
+        const banau = await Banau.findOne({ name: 'Banau' });
+        if (banau) {
+            banau.sales += savedTransaction.amount;
+            const storeSale = banau.storeSales.find(s => s.storeName === store.name);
+            if (storeSale) {
+                storeSale.revenueGenerated += savedTransaction.amount;
+            } else {
+                banau.storeSales.push({
+                    storeName: store.name,
+                    revenueGenerated: savedTransaction.amount
+                });
+            }
+            await banau.save();
+        }
+
         return res.status(200).json({ updatedStore, message: 'Skin update successful' });
     } catch (error) {
-        // Handle any errors that occurred during the update process
         console.error('Error updating skin:', error);
         return res.status(500).json({ message: 'An error occurred while updating the skin', error: error.message });
     }
@@ -829,6 +999,7 @@ const getStoreByFilter = async (req, res) => {
             esewa: 1,
             bank: 1,
             khalti: 1,
+            isDisabled: 1,
         })
             .populate('staff', 'name')
             .populate('owner', 'name')
@@ -851,13 +1022,6 @@ const getStoreByFilter = async (req, res) => {
     }
 };
 
-
-
-
-
-
-
-
 module.exports = {
     createStore,
     getStore,
@@ -872,4 +1036,8 @@ module.exports = {
     getStoreByFilter,
     updateDashboardStoreAdminBanau,
     payStoreNow,
+    payDueAmount,
+    updateDueAmount,
+    disableStore,
+    activateStore
 };

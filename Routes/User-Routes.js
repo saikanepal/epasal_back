@@ -9,15 +9,19 @@ const checkRole = require('../MiddleWare/checkRole');
 
 // Define routes
 
+
 // Route for user signup
 router.post('/signup', userController.signUp);
 
 // Route for user signin
 router.post('/signin', userController.signIn);
 router.post('/verify', userController.verifyUser);
+router.post('/forgotpassword', userController.forgotPassword);
+router.post('/forgotpasswordnewpassword', userController.forgotPassword);
 
 // Middleware for checking user authentication (login)
 router.use(checkAuth);
+
 
 //routes to get logged in User
 router.get('/getLoggedInUser', userController.getLoggedInUser);

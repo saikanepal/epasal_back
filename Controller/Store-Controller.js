@@ -235,7 +235,7 @@ const getStoreByName = async (req, res) => {
         await store.populate({
             path: 'staff',
             options: { limit: limit }
-        });
+    });
 
         res.status(200).json({ message: 'Store retrieved successfully', store });
     } catch (error) {
@@ -909,7 +909,9 @@ const updateSkin = async (req, res) => {
 
 const getStoreByFilter = async (req, res) => {
     try {
+        console.log("query is ",req.query);
         const searchTerms = req.query.search ? req.query.search.split(',').map(term => term.trim()).filter(Boolean) : [];
+        
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 2;
         const ownername = req.query.ownername ? req.query.ownername.trim() : '';

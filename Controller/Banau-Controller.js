@@ -1,5 +1,6 @@
 const Banau = require("../Model/Banau");
 const User = require("../Model/User-model");
+const Store = require("../Model/Store-model");
 
 
 const testMultipleCreation = async (req, res) => {
@@ -145,4 +146,24 @@ const deleteEmployee = async (req, res) => {
     }
 };
 
-module.exports = { getBanau, addEmployee, updateEmployeeRole, deleteEmployee, testMultipleCreation };
+const getTrendingStores = async (req, res) => {
+    try {
+        const banau = await Banau.findOne().populate('trendingStore');
+        if (!banau) {
+            return res.status(404).json({ message: 'Banau document not found' });
+        }
+
+        let stores = banau.trendingStore;
+
+        if (stores.length === 0) {
+            // If there are no trending stores, fetch the 3 latest stores from the Store model
+            stores = await Store.find().sort({ createdAt: -1 }).limit(5);
+        }
+
+        res.json({ stores });
+    } catch (error) {
+        res.status(500).json({ message: 'Fetching trending stores failed', error });
+    }
+};
+
+module.exports = { getBanau, addEmployee, updateEmployeeRole, deleteEmployee, getTrendingStores,testMultipleCreation };

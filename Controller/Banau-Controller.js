@@ -148,7 +148,7 @@ const deleteEmployee = async (req, res) => {
 
 const getTrendingStores = async (req, res) => {
     try {
-        const banau = await Banau.findOne().populate('trendingStore');
+        const banau = await Banau.findOne({ name: 'Banau' }).populate('trendingStore');
         if (!banau) {
             return res.status(404).json({ message: 'Banau document not found' });
         }

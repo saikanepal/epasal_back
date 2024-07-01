@@ -1000,6 +1000,7 @@ const getStoreByFilter = async (req, res) => {
             bank: 1,
             khalti: 1,
             isDisabled: 1,
+            logo:1,
         })
             .populate('staff', 'name')
             .populate('owner', 'name')

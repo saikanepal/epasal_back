@@ -486,5 +486,24 @@ const userForgorPasswordUpdated = async (req, res) => {
     }
 };
 
+const UserStore=async(req,res)=>{
+    const user=req.userData.userID;
+    console.log(user,"my user")
+    try{
+        const userFind=await User.findById(user).populate({
+            path: 'stores',
+            select: 'name logo banner'
+        });
+        if(!userFind){
+            return res.status(500).json({msg:"Error finding user"});
+        }
+        console.log("my user ",userFind.stores,"userFind")
+        return res.json({stores:userFind.stores})
+    }catch(err){
+        return res.status(500).json({msg:"Error in server"});
+    }
+    
+}
+
 // Export the functions
-module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee, getLoggedInUser, getLoggedInUserDetails, updateUserDetails, forgotPassword, userForgorPasswordUpdated };
+module.exports = { signUp, signIn, verifyUser, updateUserRoleByOwner, updateUserRoleByAdmin, addEmployee, deleteEmployee, getLoggedInUser, getLoggedInUserDetails, updateUserDetails, forgotPassword, userForgorPasswordUpdated,UserStore };

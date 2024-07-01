@@ -44,5 +44,7 @@ router.get('/admin/dashboard', checkRole('Admin'), (req, res) => {
     res.send('Admin dashboard');
 });
 
+router.get('/getStore',userController.UserStore)
+
 // Export the router
 module.exports = router;

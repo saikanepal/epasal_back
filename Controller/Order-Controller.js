@@ -48,7 +48,7 @@ const createOrder = async (req, res) => {
                     throw new Error(`Product with ID ${item.product} not found`);
                 }
                 item.productName = product.name;
-                console.log("item10-1", item.selectedVariant[0].options?.name);
+                console.log("item10-1", item.selectedVariant[0]?.options?.name);
                 // Check for stock availability
                 if (!item.selectedVariant || item.selectedVariant.length === 0 || item.selectedVariant[0].name === 'default' || item.selectedVariant[0].options?.name === 'default') {
                     // Default to handling without variants
@@ -93,7 +93,7 @@ const createOrder = async (req, res) => {
                     throw new Error('Invalid Esewa transaction ID');
                 }
             }
-            console.log("populated is",populatedCart);
+            console.log("populated is", populatedCart);
             // Create order document
             const newOrder = new Order({
                 fullName,
@@ -116,7 +116,7 @@ const createOrder = async (req, res) => {
             const savedOrder = await newOrder.save({ session });
 
             // Add the order to the store's orders array
-            const store = await Store.findById(storeID).session(session);
+            const store = await Store.findById(storeID).populate('orders').session(session);
             if (!store) {
                 throw new Error(`Store with ID ${storeID} not found`);
             }
@@ -151,11 +151,9 @@ const createOrder = async (req, res) => {
                     }
                 }
 
+                //TODO:
                 // Check if the order phone number is unique
-                const isUniquePhoneNumber = await Order.countDocuments({ phoneNumber }).session(session) === 1;
-                if (isUniquePhoneNumber) {
-                    store.customers += 1;
-                }
+                // Check if the order phone number is unique within the store's orders
 
                 // Update stock counts and sold quantities
                 await Promise.all(cart.map(async item => {
@@ -196,6 +194,14 @@ const createOrder = async (req, res) => {
                         store.mostSoldItem = item.product;
                     }
                 }));
+
+                const isUniquePhoneNumber = store.orders.filter(order => order.phoneNumber === phoneNumber).length === 0;
+                console.log("unique number is ",store.orders.filter(order => order.phoneNumber === phoneNumber).length);
+                console.log(isUniquePhoneNumber)
+                if (isUniquePhoneNumber) {
+                    store.customers += 1;
+                }
+
 
                 await store.save({ session });
 

@@ -5,12 +5,14 @@ const router = express.Router();
 const checkAuth = require('../MiddleWare/checkAuth');
 const checkRole = require('../MiddleWare/checkRole');
 const checkBanauRole = require('../MiddleWare/checkBanauRole');
-const { getBanau, addEmployee, updateEmployeeRole, deleteEmployee, testMultipleCreation } = require('../Controller/Banau-Controller');
+const { getBanau,getTrendingStores, addEmployee, updateEmployeeRole, deleteEmployee, testMultipleCreation } = require('../Controller/Banau-Controller');
 const banauAccessRole = require('../MiddleWare/banauAccessRole');
 const checkToBeUpdateIsAdmin = require('../MiddleWare/isBanauAdminCheck');
 // Define routes
 
 router.post('/test-route', testMultipleCreation);
+router.get('/trendingStore', getTrendingStores);
+
 
 //authentication middleware
 router.use(checkAuth);

@@ -15,7 +15,8 @@
             storeSales: [{
                 storeName: { type: String },
                 revenueGenerated: { type: Number },
-            }]
+            }],
+            trendingStore:[{type: mongoose.Schema.Types.ObjectId, ref: 'Store' }]
         },
         {
             timestamps: true,
